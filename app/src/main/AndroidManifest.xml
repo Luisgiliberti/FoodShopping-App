@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Internet permission for Firebase and network-based features -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.FoodShopping"
+        tools:targetApi="31">
+
+        <!-- Main Activity -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FoodShopping">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Login Activity -->
+        <activity
+            android:name=".LoginActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FoodShopping" />
+
+        <!-- Register Activity -->
+        <activity
+            android:name=".RegisterActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FoodShopping" />
+
+        <!-- Shopping List Activity -->
+        <activity
+            android:name=".ShoppingListActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FoodShopping" />
+
+        <!-- Favorites Activity -->
+        <activity
+            android:name=".FavoritesActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FoodShopping" />
+
+        <!-- Menu Activity -->
+        <activity
+            android:name=".MenuActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FoodShopping" />
+
+        <!-- Account Activity -->
+        <activity
+            android:name=".AccountActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FoodShopping" />
+
+        <!-- Purchase History Activity -->
+        <activity
+            android:name=".PurchaseHistoryActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FoodShopping" />
+
+        <!-- Analytics Activity -->
+        <activity
+            android:name=".AnalyticsActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FoodShopping" />
+
+        <!-- Friends Management Activity -->
+        <activity
+            android:name=".FriendsManagementActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FoodShopping" />
+
+        <!-- Settings Activity -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FoodShopping" />
+
+        <!-- Settings Activity -->
+        <activity
+            android:name=".ShopListProductsActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FoodShopping" />
+
+    </application>
+
+</manifest>

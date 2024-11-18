@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "745007783918",
+    "project_id": "foodshopping-35602",
+    "storage_bucket": "foodshopping-35602.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:745007783918:android:f60d814d5db0b0a0f478ff",
+        "android_client_info": {
+          "package_name": "com.example.foodshopping"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYWVRWyQJ33cKcVmO70iOr9SvoJXIfKyA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
