@@ -57,7 +57,7 @@ fun ShoppingListScreenView(
             verticalArrangement = Arrangement.Top,
         ) {
             Text(
-                text = "Search for Products",
+                text = "Shopping List",
                 style = MaterialTheme.typography.headlineMedium,
                 color = Color.Black,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -116,7 +116,7 @@ fun ShoppingListScreenView(
             OutlinedTextField(
                 value = shoppingListSearchText,
                 onValueChange = onShoppingListSearchTextChange,
-                label = { Text("Filter Shopping List", color = Color.Black) },
+                label = { Text("Search in Shopping List", color = Color.Black) },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()

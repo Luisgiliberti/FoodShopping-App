@@ -6,4 +6,3 @@ TO DO:
 4) Once Products were bought add to Purchase History
 5) From Purchase History create Pie Charts
 6) In settings - Allow the user to turn on or off notifications
-7) Fix the Filter Search Bar in Shopping List Products
