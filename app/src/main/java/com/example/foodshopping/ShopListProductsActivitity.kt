@@ -120,31 +120,9 @@ class ShopListProductsActivity : ComponentActivity() {
 
             val updatedList = mutableListOf<Map<String, Any>>()
             val products = snapshot?.get("products_list") as? List<Map<String, Any>> ?: listOf()
-            val userIds = products.mapNotNull { it["addedBy"] as? String }.toSet()
 
-            if (userIds.isNotEmpty()) {
-                db.collection("User").whereIn(FieldPath.documentId(), userIds.toList()).get()
-                    .addOnSuccessListener { userSnapshots ->
-                        val userMap = userSnapshots.documents.associate {
-                            it.id to (it.getString("username") ?: "Unknown")
-                        }
-
-                        products.forEach { product ->
-                            val addedById = product["addedBy"] as? String
-                            val updatedProduct = product.toMutableMap()
-                            updatedProduct["addedBy"] = userMap[addedById] ?: "Unknown"
-                            updatedList.add(updatedProduct)
-                        }
-
-                        onUpdate(updatedList)
-                    }
-                    .addOnFailureListener {
-                        Log.e("ShoppingListScreen", "Failed to fetch usernames", it)
-                        onUpdate(products)
-                    }
-            } else {
-                onUpdate(products)
-            }
+            updatedList.addAll(products)
+            onUpdate(updatedList)
         }
     }
 
