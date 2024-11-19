@@ -1,5 +1,6 @@
 package com.example.foodshopping
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +18,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import timber.log.Timber
 
 @Composable
 fun ShoppingListScreenView(
@@ -28,6 +32,8 @@ fun ShoppingListScreenView(
     onShoppingListSearchTextChange: (String) -> Unit,
     shoppingList: List<Map<String, Any>>,
     onRemoveShoppingListItem: (Map<String, Any>) -> Unit,
+    db: FirebaseFirestore,
+    shoppingListId: String
 ) {
     val filteredShoppingList = remember(shoppingListSearchText, shoppingList) {
         shoppingList.filter { productMap ->
@@ -168,6 +174,38 @@ fun ShoppingListScreenView(
                                         color = Color.Gray
                                     )
                                 }
+                                Checkbox(
+                                    checked = productMap["checked"] as? Boolean ?: false,
+                                    onCheckedChange = { isChecked ->
+                                        val productId = productMap["name"] as String
+                                        val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
+
+                                        db.runTransaction { transaction ->
+                                            val snapshot = transaction.get(shoppingListRef)
+                                            val productsList = snapshot.get("products_list") as MutableList<Map<String, Any>>
+
+                                            val updatedProducts = productsList.map { product ->
+                                                if (product["name"] == productId) {
+                                                    product.toMutableMap().apply {
+                                                        this["checked"] = isChecked
+                                                    }
+                                                } else {
+                                                    product
+                                                }
+                                            }
+
+                                            transaction.update(shoppingListRef, "products_list", updatedProducts)
+                                        }.addOnSuccessListener {
+                                            Timber.d("Successfully updated checked status for $productId")
+                                        }.addOnFailureListener { e ->
+                                            Timber.e(e, "Failed to update checked status for $productId")
+                                        }
+                                    },
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = Color(0xFF4CAF50),
+                                        uncheckedColor = Color.Gray
+                                    )
+                                )
                                 IconButton(onClick = { onRemoveShoppingListItem(productMap) }) {
                                     Text(
                                         text = "X",

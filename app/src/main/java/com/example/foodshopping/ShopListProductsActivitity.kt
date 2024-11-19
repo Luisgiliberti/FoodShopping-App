@@ -1,7 +1,6 @@
 package com.example.foodshopping
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
@@ -10,6 +9,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import timber.log.Timber
 
 class ShopListProductsActivity : ComponentActivity() {
 
@@ -62,7 +62,8 @@ class ShopListProductsActivity : ComponentActivity() {
                                 quantity = ""
                                 selectedProduct = null
                             } else {
-                                Log.w("ShoppingListScreen", "User ID is null; cannot add product.")
+                                Timber.tag("ShoppingListScreen")
+                                    .w("User ID is null; cannot add product.")
                             }
                         },
                         onCancel = {
@@ -95,7 +96,9 @@ class ShopListProductsActivity : ComponentActivity() {
                     onRemoveShoppingListItem = { productMap ->
                         removeProductFromShoppingList(productMap, db, shoppingListId)
                         shoppingList = shoppingList - productMap
-                    }
+                    },
+                    db = db,
+                    shoppingListId = shoppingListId
                 )
             }
         }
@@ -110,7 +113,7 @@ class ShopListProductsActivity : ComponentActivity() {
 
         shoppingListRef.addSnapshotListener { snapshot, error ->
             if (error != null) {
-                Log.w("ShoppingListScreen", "Listen failed.", error)
+                Timber.tag("ShoppingListScreen").w(error, "Listen failed.")
                 return@addSnapshotListener
             }
 
@@ -135,7 +138,7 @@ class ShopListProductsActivity : ComponentActivity() {
                         onUpdate(updatedList)
                     }
                     .addOnFailureListener {
-                        Log.e("ShoppingListScreen", "Failed to fetch usernames", it)
+                        Timber.tag("ShoppingListScreen").e(it, "Failed to fetch usernames")
                         onUpdate(products)
                     }
             } else {
@@ -156,17 +159,18 @@ class ShopListProductsActivity : ComponentActivity() {
             "name" to product.name,
             "category" to product.category,
             "quantity" to quantity,
-            "addedBy" to addedBy
+            "addedBy" to addedBy,
+            "checked" to false
         )
 
         val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
 
         shoppingListRef.update("products_list", FieldValue.arrayUnion(productData))
             .addOnSuccessListener {
-                Log.d("ShoppingList", "Product added to shopping list.")
+                Timber.tag("ShoppingList").d("Product added to shopping list.")
             }
             .addOnFailureListener { e ->
-                Log.e("ShoppingList", "Failed to add product to shopping list", e)
+                Timber.tag("ShoppingList").e(e, "Failed to add product to shopping list")
             }
     }
 
@@ -194,17 +198,18 @@ class ShopListProductsActivity : ComponentActivity() {
 
                     shoppingListRef.update("products_list", FieldValue.arrayRemove(productData))
                         .addOnSuccessListener {
-                            Log.d("ShoppingList", "Product removed from shopping list.")
+                            Timber.tag("ShoppingList").d("Product removed from shopping list.")
                         }
                         .addOnFailureListener { e ->
-                            Log.e("ShoppingList", "Failed to remove product from shopping list", e)
+                            Timber.tag("ShoppingList")
+                                .e(e, "Failed to remove product from shopping list")
                         }
                 } else {
-                    Log.e("ShoppingList", "Failed to find userId for username: $username")
+                    Timber.tag("ShoppingList").e("Failed to find userId for username: $username")
                 }
             }
             .addOnFailureListener { e ->
-                Log.e("ShoppingList", "Failed to fetch userId for username: $username", e)
+                Timber.tag("ShoppingList").e(e, "Failed to fetch userId for username: $username")
             }
     }
 
