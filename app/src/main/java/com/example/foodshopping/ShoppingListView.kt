@@ -145,8 +145,10 @@ fun ShoppingListItem(
 ) {
     var showOptionsDialog by remember { mutableStateOf(false) }
     var showSharedUsersDialog by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf(name) }
-    var updatedSharedUsers by remember { mutableStateOf(sharedWith.toList()) } // Immutable copy
+    var updatedSharedUsers by remember { mutableStateOf(sharedWith.toList()) }
 
     Column(
         modifier = Modifier
@@ -184,8 +186,7 @@ fun ShoppingListItem(
                                 .fillMaxWidth()
                                 .clickable {
                                     showOptionsDialog = false
-                                    // Show a dialog or navigate to a rename screen
-                                    // For simplicity, using the existing name input
+                                    showRenameDialog = true
                                 }
                                 .padding(vertical = 8.dp)
                         )
@@ -205,7 +206,7 @@ fun ShoppingListItem(
                                 .fillMaxWidth()
                                 .clickable {
                                     showOptionsDialog = false
-                                    onDelete(shoppingListId)
+                                    showDeleteConfirmationDialog = true // Show delete confirmation dialog
                                 }
                                 .padding(vertical = 8.dp)
                         )
@@ -214,6 +215,57 @@ fun ShoppingListItem(
                 confirmButton = {},
                 dismissButton = {
                     Button(onClick = { showOptionsDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        // Delete Confirmation Dialog
+        if (showDeleteConfirmationDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirmationDialog = false },
+                title = { Text("Confirm Deletion") },
+                text = { Text("Are you sure you want to delete this shopping list? This action cannot be undone.") },
+                confirmButton = {
+                    Button(onClick = {
+                        onDelete(shoppingListId) // Call the delete function
+                        showDeleteConfirmationDialog = false
+                    }) {
+                        Text("Delete")
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = { showDeleteConfirmationDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        // Rename Dialog
+        if (showRenameDialog) {
+            AlertDialog(
+                onDismissRequest = { showRenameDialog = false },
+                title = { Text("Rename Shopping List") },
+                text = {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text("New Name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        onRename(shoppingListId, newName)
+                        showRenameDialog = false
+                    }) {
+                        Text("Rename")
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = { showRenameDialog = false }) {
                         Text("Cancel")
                     }
                 }

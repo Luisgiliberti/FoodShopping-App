@@ -120,9 +120,31 @@ class ShopListProductsActivity : ComponentActivity() {
 
             val updatedList = mutableListOf<Map<String, Any>>()
             val products = snapshot?.get("products_list") as? List<Map<String, Any>> ?: listOf()
+            val userIds = products.mapNotNull { it["addedBy"] as? String }.toSet()
 
-            updatedList.addAll(products)
-            onUpdate(updatedList)
+            if (userIds.isNotEmpty()) {
+                db.collection("User").whereIn(FieldPath.documentId(), userIds.toList()).get()
+                    .addOnSuccessListener { userSnapshots ->
+                        val userMap = userSnapshots.documents.associate {
+                            it.id to (it.getString("username") ?: "Unknown")
+                        }
+
+                        products.forEach { product ->
+                            val addedById = product["addedBy"] as? String
+                            val updatedProduct = product.toMutableMap()
+                            updatedProduct["addedBy"] = userMap[addedById] ?: "Unknown"
+                            updatedList.add(updatedProduct)
+                        }
+
+                        onUpdate(updatedList)
+                    }
+                    .addOnFailureListener {
+                        Log.e("ShoppingListScreen", "Failed to fetch usernames", it)
+                        onUpdate(products)
+                    }
+            } else {
+                onUpdate(products)
+            }
         }
     }
 
@@ -157,21 +179,40 @@ class ShopListProductsActivity : ComponentActivity() {
         db: FirebaseFirestore,
         shoppingListId: String
     ) {
-        val productData = mapOf(
-            "name" to productMap["name"],
-            "category" to productMap["category"],
-            "quantity" to productMap["quantity"],
-            "addedBy" to productMap["addedBy"]
-        )
+        // Fetch userId based on username from the User collection
+        val username = productMap["addedBy"] as? String ?: return
 
-        val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
+        db.collection("User")
+            .whereEqualTo("username", username)
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                val userId = querySnapshot.documents.firstOrNull()?.id
+                if (userId != null) {
+                    // Replace addedBy field in product data with userId
+                    val productData = mapOf(
+                        "name" to productMap["name"],
+                        "category" to productMap["category"],
+                        "quantity" to productMap["quantity"],
+                        "addedBy" to userId
+                    )
 
-        shoppingListRef.update("products_list", FieldValue.arrayRemove(productData))
-            .addOnSuccessListener {
-                Log.d("ShoppingList", "Product removed from shopping list.")
+                    val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
+
+                    // Remove the product from Firestore
+                    shoppingListRef.update("products_list", FieldValue.arrayRemove(productData))
+                        .addOnSuccessListener {
+                            Log.d("ShoppingList", "Product removed from shopping list.")
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("ShoppingList", "Failed to remove product from shopping list", e)
+                        }
+                } else {
+                    Log.e("ShoppingList", "Failed to find userId for username: $username")
+                }
             }
             .addOnFailureListener { e ->
-                Log.e("ShoppingList", "Failed to remove product from shopping list", e)
+                Log.e("ShoppingList", "Failed to fetch userId for username: $username", e)
             }
     }
+
 }
