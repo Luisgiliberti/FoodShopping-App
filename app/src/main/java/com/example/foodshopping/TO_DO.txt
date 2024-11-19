@@ -1,9 +1,8 @@
 TO DO:
-1) Fix delete user - deletes EVERYTHING about that user (Friends and Shoppings lists and
-   delete from shared_with Shoppings lists)
-2) Modify Add Product to only input number in Quantity
-3) Add select button to select specific Products and have a buy button to buy those selected Products
-4) Add a Button to add to the Shopping list from the Favorites
-5) Once Products were bought add to Purchase History
-6) From Purchase History create Pie Charts
-7) In settings - Make the user
+1) Fix delete user - deletes EVERYTHING about that user (Friends and Shopping lists and
+   delete from shared_with Shopping lists)
+2) Add select button to select specific Products and have a buy button to buy those selected Products
+3) Add a Button to add to the Shopping list from the Favorites
+4) Once Products were bought add to Purchase History
+5) From Purchase History create Pie Charts
+6) In settings - Make the user turn on or off notifications
