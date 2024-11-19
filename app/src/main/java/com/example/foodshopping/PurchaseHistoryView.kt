@@ -2,15 +2,20 @@ package com.example.foodshopping
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
-fun PurchaseHistoryScreenView() {
+fun PurchaseHistoryScreenView(purchaseHistory: List<Map<String, Any>>) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -24,25 +29,108 @@ fun PurchaseHistoryScreenView() {
                 )
             )
     ) {
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(bottom = 56.dp) // Reserve space for the navigation bar
         ) {
+            // Title at the top
             Text(
-                text = "Welcome to Purchase History!",
-                style = MaterialTheme.typography.headlineLarge,
-                color = Color.Black
+                text = "Purchase History",
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color.Black,
+                modifier = Modifier
+                    .padding(16.dp)
+                    .align(Alignment.CenterHorizontally)
             )
+
+            // If purchase history is empty
+            if (purchaseHistory.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No purchase history available.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.Gray
+                    )
+                }
+            } else {
+                // Display purchase history in a list
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    items(purchaseHistory) { purchase ->
+                        PurchaseHistoryItem(purchase)
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
         }
 
+        // Bottom Navigation Bar
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
         ) {
             BottomNavigationBar(currentScreen = "Purchase History")
+        }
+    }
+}
+
+@Composable
+fun PurchaseHistoryItem(purchase: Map<String, Any>) {
+    val shoppingListName = purchase["shoppingListName"] as? String ?: "Unnamed List"
+    val datePurchased = (purchase["datePurchased"] as? com.google.firebase.Timestamp)?.toDate()
+    val products = purchase["products"] as? List<Map<String, Any>> ?: emptyList()
+
+    val formattedDate = datePurchased?.let {
+        SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(it)
+    } ?: "Unknown Date"
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Shopping list name
+            Text(
+                text = shoppingListName,
+                style = MaterialTheme.typography.headlineSmall,
+                color = Color.Black,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            // Date of purchase
+            Text(
+                text = "Date Purchased: $formattedDate",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            // Products list
+            Text(
+                text = "Products:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Black
+            )
+            products.forEach { product ->
+                val name = product["name"] as? String ?: "Unknown Product"
+                val quantity = product["quantity"] as? Long ?: 0
+                Text(
+                    text = "- $name (x$quantity)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Black,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
         }
     }
 }

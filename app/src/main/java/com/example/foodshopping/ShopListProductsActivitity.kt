@@ -98,7 +98,38 @@ class ShopListProductsActivity : ComponentActivity() {
                         shoppingList = shoppingList - productMap
                     },
                     db = db,
-                    shoppingListId = shoppingListId
+                    shoppingListId = shoppingListId,
+                    onBuy = {
+                        val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
+                        val historyRef = db.collection("History")
+
+                        db.runTransaction { transaction ->
+                            val snapshot = transaction.get(shoppingListRef)
+                            val productsList = snapshot.get("products_list") as MutableList<Map<String, Any>>
+                            val purchasedProducts = productsList.filter { it["checked"] as? Boolean == true }
+                            val remainingProducts = productsList.filter { it["checked"] as? Boolean != true }
+
+                            // Get the shopping list name
+                            val shoppingListName = snapshot.getString("name") ?: "Unnamed List"
+
+                            // Prepare the history data
+                            val historyData = mapOf(
+                                "shoppingListName" to shoppingListName,
+                                "datePurchased" to com.google.firebase.Timestamp.now(),
+                                "products" to purchasedProducts
+                            )
+
+                            // Add to History collection
+                            transaction.set(historyRef.document(), historyData)
+
+                            // Update the Shopping List to remove purchased products
+                            transaction.update(shoppingListRef, "products_list", remainingProducts)
+                        }.addOnSuccessListener {
+                            Timber.d("Successfully added to purchase history and updated shopping list.")
+                        }.addOnFailureListener { e ->
+                            Timber.e(e, "Failed to transfer items to purchase history.")
+                        }
+                    }
                 )
             }
         }
@@ -146,7 +177,6 @@ class ShopListProductsActivity : ComponentActivity() {
             }
         }
     }
-
 
     private fun addProductToShoppingList(
         product: Product,
@@ -212,5 +242,4 @@ class ShopListProductsActivity : ComponentActivity() {
                 Timber.tag("ShoppingList").e(e, "Failed to fetch userId for username: $username")
             }
     }
-
 }

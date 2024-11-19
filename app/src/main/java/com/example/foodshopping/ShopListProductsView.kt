@@ -34,7 +34,8 @@ fun ShoppingListScreenView(
     shoppingList: List<Map<String, Any>>,
     onRemoveShoppingListItem: (Map<String, Any>) -> Unit,
     db: FirebaseFirestore,
-    shoppingListId: String
+    shoppingListId: String,
+    onBuy: () -> Unit
 ) {
     val filteredShoppingList = remember(shoppingListSearchText, shoppingList) {
         shoppingList.filter { productMap ->
@@ -43,8 +44,8 @@ fun ShoppingListScreenView(
         }
     }
 
-    // State for the Buy dialog
-    var showBuyDialog by remember { mutableStateOf(false) }
+    // State for the Buy and Confirmation dialogs
+    var showConfirmDialog by remember { mutableStateOf(false) }
     val selectedProducts = shoppingList.filter { it["checked"] as? Boolean == true }
 
     Box(
@@ -140,7 +141,8 @@ fun ShoppingListScreenView(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
 
-                Button(onClick = { showBuyDialog = true },
+                Button(
+                    onClick = { showConfirmDialog = true },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF445E91)),
                 ) {
                     Text("Buy", color = Color.White)
@@ -238,24 +240,13 @@ fun ShoppingListScreenView(
             }
         }
 
-        if (showBuyDialog) {
-            BuyDialog(
+        if (showConfirmDialog) {
+            ConfirmBuyDialog(
                 selectedProducts = selectedProducts,
-                onCancel = { showBuyDialog = false },
-                onBuy = {
-                    val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
-
-                    db.runTransaction { transaction ->
-                        val snapshot = transaction.get(shoppingListRef)
-                        val productsList = snapshot.get("products_list") as MutableList<Map<String, Any>>
-                        val remainingProducts = productsList.filter { it["checked"] as? Boolean != true }
-                        transaction.update(shoppingListRef, "products_list", remainingProducts)
-                    }.addOnSuccessListener {
-                        Timber.d("Successfully purchased items.")
-                    }.addOnFailureListener { e ->
-                        Timber.e(e, "Failed to purchase items.")
-                    }
-                    showBuyDialog = false
+                onCancel = { showConfirmDialog = false },
+                onConfirm = {
+                    showConfirmDialog = false
+                    onBuy()
                 }
             )
         }
@@ -271,14 +262,14 @@ fun ShoppingListScreenView(
 }
 
 @Composable
-fun BuyDialog(
+fun ConfirmBuyDialog(
     selectedProducts: List<Map<String, Any>>,
     onCancel: () -> Unit,
-    onBuy: () -> Unit
+    onConfirm: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = { onCancel() },
-        title = { Text("Buy Selected Items") },
+        title = { Text("Confirm Purchase") },
         text = {
             Column {
                 Text("The following items will be purchased:")
@@ -289,7 +280,7 @@ fun BuyDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onBuy) {
+            Button(onClick = onConfirm) {
                 Text("Buy")
             }
         },
@@ -300,8 +291,6 @@ fun BuyDialog(
         }
     )
 }
-
-
 
 @Composable
 fun QuantityDialog(
