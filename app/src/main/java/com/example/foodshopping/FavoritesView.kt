@@ -32,9 +32,9 @@ fun FavoritesView(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFFFFCDD2), // Light Red
-                            Color(0xFFBBDEFB), // Light Blue
-                            Color(0xFFFFF176)  // Light Yellow
+                            Color(0xFFFFCDD2),
+                            Color(0xFFBBDEFB),
+                            Color(0xFFFFF176)
                         )
                     )
                 )
@@ -86,7 +86,6 @@ fun FavoritesView(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Favorites Section Header
             Text(
                 text = "Your Favorites",
                 style = MaterialTheme.typography.headlineSmall,
@@ -94,7 +93,6 @@ fun FavoritesView(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
-            // Favorites List
             if (favorites.isEmpty()) {
                 Text(
                     text = "No favorites added.",
@@ -117,7 +115,6 @@ fun FavoritesView(
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        // Bottom Navigation Bar
         Box(
             modifier = Modifier
                 .fillMaxWidth()

@@ -43,11 +43,10 @@ fun ShoppingListScreenView(
         Column(
             modifier = Modifier
                 .fillMaxHeight()
-                .padding(bottom = 64.dp), // Leave space for the navigation bar
+                .padding(bottom = 64.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top,
         ) {
-            // Search bar for products
             Text(
                 text = "Search for Products",
                 style = MaterialTheme.typography.headlineMedium,
@@ -66,7 +65,6 @@ fun ShoppingListScreenView(
                 textStyle = LocalTextStyle.current.copy(color = Color.Black)
             )
 
-            // Search results display
             if (searchResults.isNotEmpty()) {
                 LazyColumn {
                     items(searchResults) { product ->
@@ -99,7 +97,6 @@ fun ShoppingListScreenView(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Search bar for shopping list
             Text(
                 text = "Your Shopping List",
                 style = MaterialTheme.typography.headlineSmall,
@@ -118,7 +115,6 @@ fun ShoppingListScreenView(
                 textStyle = LocalTextStyle.current.copy(color = Color.Black)
             )
 
-            // Shopping list display
             if (shoppingList.isEmpty()) {
                 Text(
                     text = "No items in the shopping list.",
@@ -178,7 +174,6 @@ fun ShoppingListScreenView(
             }
         }
 
-        // Navigation bar positioned independently at the bottom
         Box(
             modifier = Modifier
                 .fillMaxWidth()

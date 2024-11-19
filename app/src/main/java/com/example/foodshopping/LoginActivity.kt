@@ -14,7 +14,6 @@ class LoginActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         auth = FirebaseAuth.getInstance()
 
-        // Check if the user is already logged in
         if (auth.currentUser != null) {
             navigateToShoppingList()
             return
@@ -38,11 +37,9 @@ class LoginActivity : ComponentActivity() {
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    // Login success
                     onResult(true, null)
                     navigateToShoppingList()
                 } else {
-                    // If login fails, display a message to the user.
                     val error = task.exception?.localizedMessage ?: "Authentication failed."
                     onResult(false, error)
                 }

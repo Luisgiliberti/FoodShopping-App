@@ -57,7 +57,7 @@ class FriendsManagementActivity : ComponentActivity() {
                     },
                     onAddFriend = {
                         if (friendsList.any { it.email == searchText }) {
-                            duplicateFriendError = true // Trigger duplicate friend error
+                            duplicateFriendError = true
                         } else {
                             coroutineScope.launch {
                                 addFriend(searchText) { newFriend ->

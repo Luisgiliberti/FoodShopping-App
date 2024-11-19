@@ -46,9 +46,8 @@ fun ShoppingListView(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 56.dp) // Reserve space for the navigation bar
+                .padding(bottom = 56.dp)
         ) {
-            // Floating Action Button to add a new shopping list
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -65,12 +64,11 @@ fun ShoppingListView(
                 }
             }
 
-            // Combined List of Shopping Lists
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp) // Adds spacing between items
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(shoppingLists) { shoppingList ->
                     ShoppingListItem(
@@ -88,7 +86,6 @@ fun ShoppingListView(
                 }
             }
 
-            // Add Shopping List Dialog
             if (showDialog) {
                 AddShoppingListDialog(
                     shoppingListName = shoppingListName,
@@ -119,7 +116,6 @@ fun ShoppingListView(
             }
         }
 
-        // Bottom Navigation Bar
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -173,7 +169,6 @@ fun ShoppingListItem(
             }
         }
 
-        // Options Dialog for Owned Lists
         if (showOptionsDialog) {
             AlertDialog(
                 onDismissRequest = { showOptionsDialog = false },
@@ -206,7 +201,7 @@ fun ShoppingListItem(
                                 .fillMaxWidth()
                                 .clickable {
                                     showOptionsDialog = false
-                                    showDeleteConfirmationDialog = true // Show delete confirmation dialog
+                                    showDeleteConfirmationDialog = true
                                 }
                                 .padding(vertical = 8.dp)
                         )
@@ -221,7 +216,6 @@ fun ShoppingListItem(
             )
         }
 
-        // Delete Confirmation Dialog
         if (showDeleteConfirmationDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirmationDialog = false },
@@ -229,7 +223,7 @@ fun ShoppingListItem(
                 text = { Text("Are you sure you want to delete this shopping list? This action cannot be undone.") },
                 confirmButton = {
                     Button(onClick = {
-                        onDelete(shoppingListId) // Call the delete function
+                        onDelete(shoppingListId)
                         showDeleteConfirmationDialog = false
                     }) {
                         Text("Delete")
@@ -243,7 +237,6 @@ fun ShoppingListItem(
             )
         }
 
-        // Rename Dialog
         if (showRenameDialog) {
             AlertDialog(
                 onDismissRequest = { showRenameDialog = false },
@@ -272,7 +265,6 @@ fun ShoppingListItem(
             )
         }
 
-        // Shared Users Management Dialog
         if (showSharedUsersDialog) {
             AlertDialog(
                 onDismissRequest = { showSharedUsersDialog = false },

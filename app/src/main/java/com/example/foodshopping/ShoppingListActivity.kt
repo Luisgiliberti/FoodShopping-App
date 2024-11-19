@@ -27,12 +27,10 @@ class ShoppingListActivity : ComponentActivity() {
     private val userId = auth.currentUser?.uid
     private val userEmail = auth.currentUser?.email
 
-    // Separate lists for owned and shared shopping lists
     private var ownedShoppingLists by mutableStateOf<List<ShoppingList>>(emptyList())
     private var sharedShoppingLists by mutableStateOf<List<ShoppingList>>(emptyList())
     private var friendsList by mutableStateOf<List<String>>(emptyList())
 
-    // Combined list
     private val shoppingLists: List<ShoppingList>
         get() = ownedShoppingLists + sharedShoppingLists
 
@@ -67,7 +65,6 @@ class ShoppingListActivity : ComponentActivity() {
 
     private fun fetchShoppingLists() {
         userId?.let { uid ->
-            // Fetch the user's friends list
             db.collection("User").document(uid).get()
                 .addOnSuccessListener { doc ->
                     friendsList = (doc.get("friends_list") as? List<String>) ?: emptyList()
@@ -76,7 +73,6 @@ class ShoppingListActivity : ComponentActivity() {
                     Log.e("ShoppingListActivity", "Error fetching friends list: $e")
                 }
 
-            // Listener for shopping lists created by the user
             db.collection("ShoppingList")
                 .whereEqualTo("created_by", uid)
                 .addSnapshotListener { snapshots, e ->
@@ -102,7 +98,6 @@ class ShoppingListActivity : ComponentActivity() {
                     Log.d("ShoppingListActivity", "Owned lists updated: $ownedShoppingLists")
                 }
 
-            // Listener for shopping lists shared with the user
             db.collection("ShoppingList")
                 .whereArrayContains("shared_with", userEmail ?: "")
                 .addSnapshotListener { snapshots, e ->
@@ -120,7 +115,6 @@ class ShoppingListActivity : ComponentActivity() {
                         val createdBy = doc.getString("created_by") ?: ""
                         val sharedWith = (doc.get("shared_with") as? List<String>) ?: emptyList()
 
-                        // Fetch the creator's username
                         val task = db.collection("User").document(createdBy).get()
                             .addOnSuccessListener { creatorDoc ->
                                 val username = creatorDoc.getString("username") ?: "Unknown"
@@ -142,7 +136,6 @@ class ShoppingListActivity : ComponentActivity() {
                         tasks.add(task)
                     }
 
-                    // If no shared lists, ensure sharedShoppingLists is empty
                     if (snapshots.documents.isEmpty()) {
                         sharedShoppingLists = emptyList()
                         Log.d("ShoppingListActivity", "No shared shopping lists found.")

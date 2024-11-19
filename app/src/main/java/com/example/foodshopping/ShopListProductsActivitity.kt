@@ -30,14 +30,12 @@ class ShopListProductsActivity : ComponentActivity() {
                 val userId = auth.currentUser?.uid
                 val shoppingListId = intent.getStringExtra("SHOPPING_LIST_ID") ?: return@FoodShoppingTheme
 
-                // Fetch Shopping List on Launch
                 LaunchedEffect(shoppingListId) {
                     fetchShoppingList(db, shoppingListId) { updatedList ->
                         shoppingList = updatedList
                     }
                 }
 
-                // Quantity Dialog
                 if (showQuantityDialog) {
                     QuantityDialog(
                         product = selectedProduct,
@@ -73,7 +71,6 @@ class ShopListProductsActivity : ComponentActivity() {
                     )
                 }
 
-                // Shopping List Screen
                 ShoppingListScreenView(
                     searchText = searchText,
                     onSearchTextChange = { query ->
@@ -179,7 +176,6 @@ class ShopListProductsActivity : ComponentActivity() {
         db: FirebaseFirestore,
         shoppingListId: String
     ) {
-        // Fetch userId based on username from the User collection
         val username = productMap["addedBy"] as? String ?: return
 
         db.collection("User")
@@ -188,7 +184,6 @@ class ShopListProductsActivity : ComponentActivity() {
             .addOnSuccessListener { querySnapshot ->
                 val userId = querySnapshot.documents.firstOrNull()?.id
                 if (userId != null) {
-                    // Replace addedBy field in product data with userId
                     val productData = mapOf(
                         "name" to productMap["name"],
                         "category" to productMap["category"],
@@ -198,7 +193,6 @@ class ShopListProductsActivity : ComponentActivity() {
 
                     val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
 
-                    // Remove the product from Firestore
                     shoppingListRef.update("products_list", FieldValue.arrayRemove(productData))
                         .addOnSuccessListener {
                             Log.d("ShoppingList", "Product removed from shopping list.")
