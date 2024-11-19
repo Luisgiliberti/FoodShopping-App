@@ -95,8 +95,7 @@ class ShopListProductsActivity : ComponentActivity() {
                     onRemoveShoppingListItem = { productMap ->
                         removeProductFromShoppingList(productMap, db, shoppingListId)
                         shoppingList = shoppingList - productMap
-                    },
-                    currentScreen = "Shopping List Products"
+                    }
                 )
             }
         }

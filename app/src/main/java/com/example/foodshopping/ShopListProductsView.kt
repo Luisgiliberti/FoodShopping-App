@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -27,8 +28,14 @@ fun ShoppingListScreenView(
     onShoppingListSearchTextChange: (String) -> Unit,
     shoppingList: List<Map<String, Any>>,
     onRemoveShoppingListItem: (Map<String, Any>) -> Unit,
-    currentScreen: String
 ) {
+    val filteredShoppingList = remember(shoppingListSearchText, shoppingList) {
+        shoppingList.filter { productMap ->
+            val productName = productMap["name"]?.toString()?.lowercase() ?: ""
+            productName.contains(shoppingListSearchText.lowercase())
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -117,9 +124,9 @@ fun ShoppingListScreenView(
                 textStyle = LocalTextStyle.current.copy(color = Color.Black)
             )
 
-            if (shoppingList.isEmpty()) {
+            if (filteredShoppingList.isEmpty()) {
                 Text(
-                    text = "No items in the shopping list.",
+                    text = "No items match your search.",
                     color = Color.Gray,
                     modifier = Modifier.padding(top = 8.dp)
                 )
@@ -127,7 +134,7 @@ fun ShoppingListScreenView(
                 LazyColumn(
                     modifier = Modifier.weight(1f)
                 ) {
-                    items(shoppingList) { productMap ->
+                    items(filteredShoppingList) { productMap ->
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -181,10 +188,11 @@ fun ShoppingListScreenView(
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
         ) {
-            BottomNavigationBar(currentScreen = currentScreen)
+            BottomNavigationBar(currentScreen = "Shopping List Products")
         }
     }
 }
+
 
 @Composable
 fun QuantityDialog(
