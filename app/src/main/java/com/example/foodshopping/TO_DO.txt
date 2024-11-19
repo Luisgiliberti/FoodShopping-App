@@ -4,5 +4,6 @@ TO DO:
 2) Add select box to select specific Products and have a buy button to buy those selected Products
 3) Add a Button to add to the Shopping list from the Favorites
 4) Once Products were bought add to Purchase History
-5) From Purchase History create Pie Charts
+5) From Purchase History create Pie Chart of the Categories and Legends
 6) In settings - Allow the user to turn on or off notifications
+7) Radio button if User is Shopping in Shopping List Product
