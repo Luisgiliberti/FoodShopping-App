@@ -43,26 +43,26 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.0")
-    implementation("androidx.activity:activity-compose:1.7.2")
+    implementation("androidx.activity:activity-compose:1.9.3")
 
-    // Using the Compose BOM to manage Compose versions
-    implementation(platform("androidx.compose:compose-bom:2024.01.00"))
-
-    // Core Compose dependencies
+    // Compose BOM
+    implementation(platform("androidx.compose:compose-bom:2024.02.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material3:material3-window-size-class")
 
-    // Firebase dependencies
-    implementation(platform("com.google.firebase:firebase-bom:31.1.0"))
+    // Firebase BOM
+    implementation(platform("com.google.firebase:firebase-bom:32.3.1"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
 
-    // Multidex dependency
+    // Multidex
     implementation("androidx.multidex:multidex:2.0.1")
 
-    // Material 3 dependency
-    implementation("androidx.compose.material3:material3")
+    // Debugging
+    implementation("com.jakewharton.timber:timber:5.0.1")
 
     // Testing dependencies
     testImplementation("junit:junit:4.13.2")
