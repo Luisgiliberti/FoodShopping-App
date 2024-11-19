@@ -32,19 +32,17 @@ fun PurchaseHistoryScreenView(purchaseHistory: List<Map<String, Any>>) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 56.dp) // Reserve space for the navigation bar
+                .padding(bottom = 56.dp)
         ) {
-            // Title at the top
             Text(
                 text = "Purchase History",
                 style = MaterialTheme.typography.headlineMedium,
                 color = Color.Black,
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(vertical = 16.dp)
                     .align(Alignment.CenterHorizontally)
             )
 
-            // If purchase history is empty
             if (purchaseHistory.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -58,7 +56,6 @@ fun PurchaseHistoryScreenView(purchaseHistory: List<Map<String, Any>>) {
                     )
                 }
             } else {
-                // Display purchase history in a list
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -66,13 +63,12 @@ fun PurchaseHistoryScreenView(purchaseHistory: List<Map<String, Any>>) {
                 ) {
                     items(purchaseHistory) { purchase ->
                         PurchaseHistoryItem(purchase)
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
             }
         }
 
-        // Bottom Navigation Bar
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -98,37 +94,44 @@ fun PurchaseHistoryItem(purchase: Map<String, Any>) {
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(4.dp)
+        elevation = CardDefaults.cardElevation(6.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Shopping list name
             Text(
                 text = shoppingListName,
                 style = MaterialTheme.typography.headlineSmall,
                 color = Color.Black,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
-            // Date of purchase
             Text(
                 text = "Date Purchased: $formattedDate",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            // Products list
-            Text(
-                text = "Products:",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Black
-            )
-            products.forEach { product ->
-                val name = product["name"] as? String ?: "Unknown Product"
-                val quantity = product["quantity"] as? Long ?: 0
+
+            if (products.isNotEmpty()) {
                 Text(
-                    text = "- $name (x$quantity)",
+                    text = "Products:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Black
+                )
+                products.forEach { product ->
+                    val name = product["name"] as? String ?: "Unknown Product"
+                    val quantity = product["quantity"] as? Long ?: 0
+                    Text(
+                        text = "- $name (x$quantity)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Black,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                    )
+                }
+            } else {
+                Text(
+                    text = "No products were purchased.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Black,
-                    modifier = Modifier.padding(start = 8.dp)
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 8.dp)
                 )
             }
         }

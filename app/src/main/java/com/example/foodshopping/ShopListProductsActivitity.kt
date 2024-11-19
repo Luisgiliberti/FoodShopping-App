@@ -116,7 +116,8 @@ class ShopListProductsActivity : ComponentActivity() {
                             val historyData = mapOf(
                                 "shoppingListName" to shoppingListName,
                                 "datePurchased" to com.google.firebase.Timestamp.now(),
-                                "products" to purchasedProducts
+                                "products" to purchasedProducts,
+                                "userId" to userId
                             )
 
                             // Add to History collection
@@ -130,6 +131,7 @@ class ShopListProductsActivity : ComponentActivity() {
                             Timber.e(e, "Failed to transfer items to purchase history.")
                         }
                     }
+
                 )
             }
         }

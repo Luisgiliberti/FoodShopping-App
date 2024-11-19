@@ -2,8 +2,7 @@ TO DO:
 1) Fix delete user - deletes EVERYTHING about that user
    - Friends and Shopping lists and delete from shared_with Shopping lists
 2) Add a Button to add to the Shopping list from the Favorites
-3) Once Products were bought add to Purchase History
-4) From Purchase History create Pie Chart of the Categories and Legends(Monthly facts/Fun facts)
+3) From Purchase History create Pie Chart of the Categories and Legends(Monthly facts/Fun facts)
+4) Radio button if a User is Shopping Notify their friends and display on the HomePage
 5) In settings - Allow the user to turn on or off notifications
    - Add/Removed/Bought Products and Users Shopping -
-6) Radio button if a User is Shopping Notify their friends and display on the HomePage
