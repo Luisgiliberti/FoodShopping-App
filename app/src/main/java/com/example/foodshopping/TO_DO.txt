@@ -1,0 +1,8 @@
+TO DO:
+1) Fix delete user - log out the user then delete account
+2) Fix login - Ignoring header X-Firebase-Locale because its value was null.
+3) Modify Add Product to only input number in Quantity
+4) Add select button to select specific Products and have a buy button to buy those selected Products
+5) Add a Button to add to the Shopping list from the Favorites
+6) Once Products were bought add to Purchase History
+7) From Purchase History create Pie Charts
