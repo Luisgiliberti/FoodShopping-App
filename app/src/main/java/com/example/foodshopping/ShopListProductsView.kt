@@ -1,6 +1,5 @@
 package com.example.foodshopping
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,7 +7,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -18,7 +20,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import timber.log.Timber
 
@@ -41,6 +42,10 @@ fun ShoppingListScreenView(
             productName.contains(shoppingListSearchText.lowercase())
         }
     }
+
+    // State for the Buy dialog
+    var showBuyDialog by remember { mutableStateOf(false) }
+    val selectedProducts = shoppingList.filter { it["checked"] as? Boolean == true }
 
     Box(
         modifier = Modifier
@@ -119,16 +124,28 @@ fun ShoppingListScreenView(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            OutlinedTextField(
-                value = shoppingListSearchText,
-                onValueChange = onShoppingListSearchTextChange,
-                label = { Text("Search in Shopping List", color = Color.Black) },
-                singleLine = true,
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                textStyle = LocalTextStyle.current.copy(color = Color.Black)
-            )
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                OutlinedTextField(
+                    value = shoppingListSearchText,
+                    onValueChange = onShoppingListSearchTextChange,
+                    label = { Text("Search in Shopping List", color = Color.Black) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                    textStyle = LocalTextStyle.current.copy(color = Color.Black)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(onClick = { showBuyDialog = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF445E91)),
+                ) {
+                    Text("Buy", color = Color.White)
+                }
+            }
 
             if (filteredShoppingList.isEmpty()) {
                 Text(
@@ -221,6 +238,28 @@ fun ShoppingListScreenView(
             }
         }
 
+        if (showBuyDialog) {
+            BuyDialog(
+                selectedProducts = selectedProducts,
+                onCancel = { showBuyDialog = false },
+                onBuy = {
+                    val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
+
+                    db.runTransaction { transaction ->
+                        val snapshot = transaction.get(shoppingListRef)
+                        val productsList = snapshot.get("products_list") as MutableList<Map<String, Any>>
+                        val remainingProducts = productsList.filter { it["checked"] as? Boolean != true }
+                        transaction.update(shoppingListRef, "products_list", remainingProducts)
+                    }.addOnSuccessListener {
+                        Timber.d("Successfully purchased items.")
+                    }.addOnFailureListener { e ->
+                        Timber.e(e, "Failed to purchase items.")
+                    }
+                    showBuyDialog = false
+                }
+            )
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -230,6 +269,38 @@ fun ShoppingListScreenView(
         }
     }
 }
+
+@Composable
+fun BuyDialog(
+    selectedProducts: List<Map<String, Any>>,
+    onCancel: () -> Unit,
+    onBuy: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { onCancel() },
+        title = { Text("Buy Selected Items") },
+        text = {
+            Column {
+                Text("The following items will be purchased:")
+                Spacer(modifier = Modifier.height(8.dp))
+                selectedProducts.forEach { product ->
+                    Text("- ${product["name"]} (x${product["quantity"]})")
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onBuy) {
+                Text("Buy")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onCancel) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
 
 
 @Composable
