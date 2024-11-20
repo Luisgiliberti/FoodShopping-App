@@ -42,7 +42,7 @@ fun HomePageView(onLoginClick: () -> Unit, onRegisterClick: () -> Unit) {
                 textAlign = TextAlign.Center
             )
             Text(
-                text = "An app for families, where members can create a common list to buy food and others can contribute to it and make edits in real-time. It allows family members to create a joint list of ingredients that can be ticked off when bought, so that all other family members are notified at the same time if someone adds or takes something out of the cart.",
+                text = "An app for families, where members can create a common list to buy food and others can contribute to it and make edits in real-time. It allows family members to create a joint list of ingredients that can be ticked off when bought, so that all other family members are notified at the same time if someone adds or takes something out of the shopping list.",
                 fontSize = 16.sp,
                 color = Color.Black,
                 textAlign = TextAlign.Center,

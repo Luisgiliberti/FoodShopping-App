@@ -58,6 +58,9 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
 
+    // Charts
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
     // Multidex
     implementation("androidx.multidex:multidex:2.0.1")
 
