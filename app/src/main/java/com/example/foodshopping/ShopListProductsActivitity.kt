@@ -219,22 +219,33 @@ class ShopListProductsActivity : ComponentActivity() {
             .addOnSuccessListener { querySnapshot ->
                 val userId = querySnapshot.documents.firstOrNull()?.id
                 if (userId != null) {
-                    val productData = mapOf(
-                        "name" to productMap["name"],
-                        "category" to productMap["category"],
-                        "quantity" to productMap["quantity"],
-                        "addedBy" to userId
-                    )
-
                     val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
+                    shoppingListRef.get()
+                        .addOnSuccessListener { document ->
+                            val productsList = document.get("products_list") as? List<Map<String, Any>> ?: emptyList()
+                            val productToRemove = productsList.firstOrNull { product ->
+                                product["name"] == productMap["name"] &&
+                                        product["category"] == productMap["category"] &&
+                                        product["quantity"] == productMap["quantity"] &&
+                                        product["addedBy"] == userId
+                            }
 
-                    shoppingListRef.update("products_list", FieldValue.arrayRemove(productData))
-                        .addOnSuccessListener {
-                            Timber.tag("ShoppingList").d("Product removed from shopping list.")
+                            if (productToRemove != null) {
+                                shoppingListRef.update("products_list", FieldValue.arrayRemove(productToRemove))
+                                    .addOnSuccessListener {
+                                        Timber.tag("ShoppingList").d("Product removed from shopping list.")
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Timber.tag("ShoppingList")
+                                            .e(e, "Failed to remove product from shopping list")
+                                    }
+                            } else {
+                                Timber.tag("ShoppingList").e("Product not found in the shopping list.")
+                            }
                         }
                         .addOnFailureListener { e ->
                             Timber.tag("ShoppingList")
-                                .e(e, "Failed to remove product from shopping list")
+                                .e(e, "Failed to fetch shopping list for ID: $shoppingListId")
                         }
                 } else {
                     Timber.tag("ShoppingList").e("Failed to find userId for username: $username")
