@@ -1,6 +1,6 @@
 TO DO:
 1) Fix delete user - deletes EVERYTHING about that user
    - Friends and Shopping lists and delete from shared_with Shopping lists -
-2) Radio button if a User is Shopping Notify their friends and display on the HomePage
-3) In settings - Allow the user to turn on or off notifications
-   - Add/Removed/Bought Products and Users Shopping -
+2) In settings - Allow the user to turn on or off notifications
+   - Add/Removed/Bought Products and Users Shopping Status-
+3) Improve the Analytics

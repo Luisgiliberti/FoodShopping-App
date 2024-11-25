@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -18,8 +19,11 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun ShoppingListView(
-    shoppingLists: List<ShoppingList>,
+    shoppingLists: List<ShoppingList>, // Combined list of owned and shared shopping lists
     friendsList: List<String>,
+    friendsShopping: List<String>, // Friends currently shopping
+    isShopping: Boolean,
+    onShoppingStatusChange: (Boolean) -> Unit,
     onAddShoppingList: (String, List<String>) -> Unit,
     onRenameShoppingList: (String, String) -> Unit,
     onDeleteShoppingList: (String) -> Unit,
@@ -48,12 +52,37 @@ fun ShoppingListView(
                 .fillMaxSize()
                 .padding(bottom = 56.dp)
         ) {
-            Box(
+            // Top Bar with Switch and Add Button
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                contentAlignment = Alignment.TopEnd
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Are you shopping?",
+                        fontSize = 18.sp,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Switch(
+                        checked = isShopping,
+                        onCheckedChange = onShoppingStatusChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color(0xFF4CAF50),
+                            uncheckedThumbColor = Color(0xFFBDBDBD)
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isShopping) "Yes" else "No",
+                        fontSize = 16.sp,
+                        color = if (isShopping) Color(0xFF4CAF50) else Color(0xFFBDBDBD)
+                    )
+                }
+
                 FloatingActionButton(
                     onClick = { showDialog = true },
                     containerColor = Color(0xFF445E91),
@@ -64,6 +93,7 @@ fun ShoppingListView(
                 }
             }
 
+            // Combined List of Shopping Lists
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -113,6 +143,42 @@ fun ShoppingListView(
                         }
                     }
                 )
+            }
+
+            // Friends Shopping Right Now Section
+            if (friendsShopping.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Text(
+                        text = "Friends Shopping Right Now:",
+                        fontSize = 18.sp,
+                        color = Color.Black,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    friendsShopping.forEach { friend ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = friend,
+                                fontSize = 16.sp,
+                                color = Color.Black
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .background(color = Color(0xFF4CAF50), shape = CircleShape)
+                            )
+                        }
+                    }
+                }
             }
         }
 
