@@ -28,8 +28,18 @@ class FavoritesActivity : ComponentActivity() {
                     var searchText by remember { mutableStateOf("") }
                     var searchResults by remember { mutableStateOf(listOf<Product>()) }
                     var favorites by remember { mutableStateOf(listOf<Product>()) }
+                    var shoppingLists by remember { mutableStateOf(listOf<Pair<String, String>>()) } // Pair of (id, name)
+
                     val ingredients = ProductList.getProducts(this)
 
+                    // Fetch shopping lists (owned and shared)
+                    LaunchedEffect(userId) {
+                        fetchShoppingLists { fetchedLists ->
+                            shoppingLists = fetchedLists
+                        }
+                    }
+
+                    // Fetch favorites
                     LaunchedEffect(userId) {
                         fetchFavorites { fetchedFavorites ->
                             favorites = fetchedFavorites
@@ -51,6 +61,7 @@ class FavoritesActivity : ComponentActivity() {
                         },
                         searchResults = searchResults,
                         favorites = favorites,
+                        shoppingLists = shoppingLists.map { it.second }, // Pass only names to the UI
                         onAddFavorite = { product ->
                             addFavorite(product) {
                                 favorites = favorites + product
@@ -63,7 +74,17 @@ class FavoritesActivity : ComponentActivity() {
                                 favorites = favorites - product
                             }
                         },
-                        currentScreen = "Favorites"
+                        onAddToShoppingList = { product, listName, quantity ->
+                            // Find the corresponding list ID
+                            val listId = shoppingLists.firstOrNull { it.second == listName }?.first
+                            if (listId != null) {
+                                addProductToShoppingList(product, quantity, listId, {}, { e ->
+                                    e.printStackTrace()
+                                })
+                            } else {
+                                println("Error: No matching list ID found for name $listName")
+                            }
+                        }
                     )
                 }
             }
@@ -78,6 +99,24 @@ class FavoritesActivity : ComponentActivity() {
                     Product(name = fav["name"] ?: "", category = fav["category"] ?: "")
                 }
                 onComplete(favorites)
+            }
+        }
+    }
+
+    private fun fetchShoppingLists(onComplete: (List<Pair<String, String>>) -> Unit) {
+        userId?.let { uid ->
+            val userEmail = auth.currentUser?.email.orEmpty()
+            db.collection("ShoppingList").get().addOnSuccessListener { snapshot ->
+                val fetchedLists = snapshot.documents.filter {
+                    val createdBy = it.getString("created_by")
+                    val sharedWith = it.get("shared_with") as? List<String> ?: emptyList()
+                    createdBy == uid || sharedWith.contains(userEmail)
+                }.mapNotNull { doc ->
+                    val id = doc.id
+                    val name = doc.getString("name") ?: return@mapNotNull null
+                    Pair(id, name) // Return document ID and name
+                }
+                onComplete(fetchedLists)
             }
         }
     }
@@ -97,6 +136,42 @@ class FavoritesActivity : ComponentActivity() {
             val productData = mapOf("name" to product.name, "category" to product.category)
             userDoc.update("favorites", FieldValue.arrayRemove(productData))
                 .addOnSuccessListener { onComplete() }
+        }
+    }
+
+    private fun addProductToShoppingList(
+        product: Product,
+        quantity: Int,
+        shoppingListId: String,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        userId?.let { uid ->
+            val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
+            shoppingListRef.get().addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val productData = mapOf(
+                        "name" to product.name,
+                        "category" to product.category,
+                        "quantity" to quantity,
+                        "addedBy" to uid,
+                        "checked" to false
+                    )
+                    shoppingListRef.update("products_list", FieldValue.arrayUnion(productData))
+                        .addOnSuccessListener {
+                            onSuccess()
+                            println("Product added successfully: $productData to $shoppingListId")
+                        }
+                        .addOnFailureListener { e ->
+                            onFailure(e)
+                            println("Failed to add product: ${e.message}")
+                        }
+                } else {
+                    println("Error: Shopping list $shoppingListId does not exist")
+                }
+            }.addOnFailureListener { e ->
+                println("Failed to fetch shopping list: ${e.message}")
+            }
         }
     }
 }
