@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.example.foodshopping.ui.theme.FoodShoppingTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldPath
@@ -30,6 +32,10 @@ class ShopListProductsActivity : ComponentActivity() {
                 val userId = auth.currentUser?.uid
                 val shoppingListId = intent.getStringExtra("SHOPPING_LIST_ID") ?: return@FoodShoppingTheme
 
+                // Add Firestore listener for shopping list changes
+                listenToShoppingListChanges(db, shoppingListId)
+
+                // Monitor changes to the shopping list
                 LaunchedEffect(shoppingListId) {
                     fetchShoppingList(db, shoppingListId) { updatedList ->
                         shoppingList = updatedList
@@ -51,12 +57,6 @@ class ShopListProductsActivity : ComponentActivity() {
                                     userId,
                                     db,
                                     shoppingListId
-                                )
-                                shoppingList = shoppingList + mapOf(
-                                    "name" to product.name,
-                                    "category" to product.category,
-                                    "quantity" to quantityInt,
-                                    "addedBy" to userId
                                 )
                                 showQuantityDialog = false
                                 quantity = ""
@@ -100,38 +100,8 @@ class ShopListProductsActivity : ComponentActivity() {
                     db = db,
                     shoppingListId = shoppingListId,
                     onBuy = {
-                        val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
-                        val historyRef = db.collection("History")
-
-                        db.runTransaction { transaction ->
-                            val snapshot = transaction.get(shoppingListRef)
-                            val productsList = snapshot.get("products_list") as MutableList<Map<String, Any>>
-                            val purchasedProducts = productsList.filter { it["checked"] as? Boolean == true }
-                            val remainingProducts = productsList.filter { it["checked"] as? Boolean != true }
-
-                            // Get the shopping list name
-                            val shoppingListName = snapshot.getString("name") ?: "Unnamed List"
-
-                            // Prepare the history data
-                            val historyData = mapOf(
-                                "shoppingListName" to shoppingListName,
-                                "datePurchased" to com.google.firebase.Timestamp.now(),
-                                "products" to purchasedProducts,
-                                "userId" to userId
-                            )
-
-                            // Add to History collection
-                            transaction.set(historyRef.document(), historyData)
-
-                            // Update the Shopping List to remove purchased products
-                            transaction.update(shoppingListRef, "products_list", remainingProducts)
-                        }.addOnSuccessListener {
-                            Timber.d("Successfully added to purchase history and updated shopping list.")
-                        }.addOnFailureListener { e ->
-                            Timber.e(e, "Failed to transfer items to purchase history.")
-                        }
+                        transferToPurchaseHistory(db, shoppingListId, userId)
                     }
-
                 )
             }
         }
@@ -150,7 +120,6 @@ class ShopListProductsActivity : ComponentActivity() {
                 return@addSnapshotListener
             }
 
-            val updatedList = mutableListOf<Map<String, Any>>()
             val products = snapshot?.get("products_list") as? List<Map<String, Any>> ?: listOf()
             val userIds = products.mapNotNull { it["addedBy"] as? String }.toSet()
 
@@ -161,11 +130,10 @@ class ShopListProductsActivity : ComponentActivity() {
                             it.id to (it.getString("username") ?: "Unknown")
                         }
 
-                        products.forEach { product ->
-                            val addedById = product["addedBy"] as? String
+                        val updatedList = products.map { product ->
                             val updatedProduct = product.toMutableMap()
-                            updatedProduct["addedBy"] = userMap[addedById] ?: "Unknown"
-                            updatedList.add(updatedProduct)
+                            updatedProduct["addedBy"] = userMap[product["addedBy"]] ?: "Unknown"
+                            updatedProduct
                         }
 
                         onUpdate(updatedList)
@@ -211,48 +179,171 @@ class ShopListProductsActivity : ComponentActivity() {
         db: FirebaseFirestore,
         shoppingListId: String
     ) {
-        val username = productMap["addedBy"] as? String ?: return
-
-        db.collection("User")
-            .whereEqualTo("username", username)
-            .get()
-            .addOnSuccessListener { querySnapshot ->
-                val userId = querySnapshot.documents.firstOrNull()?.id
-                if (userId != null) {
-                    val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
-                    shoppingListRef.get()
-                        .addOnSuccessListener { document ->
-                            val productsList = document.get("products_list") as? List<Map<String, Any>> ?: emptyList()
-                            val productToRemove = productsList.firstOrNull { product ->
-                                product["name"] == productMap["name"] &&
-                                        product["category"] == productMap["category"] &&
-                                        product["quantity"] == productMap["quantity"] &&
-                                        product["addedBy"] == userId
-                            }
-
-                            if (productToRemove != null) {
-                                shoppingListRef.update("products_list", FieldValue.arrayRemove(productToRemove))
-                                    .addOnSuccessListener {
-                                        Timber.tag("ShoppingList").d("Product removed from shopping list.")
-                                    }
-                                    .addOnFailureListener { e ->
-                                        Timber.tag("ShoppingList")
-                                            .e(e, "Failed to remove product from shopping list")
-                                    }
-                            } else {
-                                Timber.tag("ShoppingList").e("Product not found in the shopping list.")
-                            }
-                        }
-                        .addOnFailureListener { e ->
-                            Timber.tag("ShoppingList")
-                                .e(e, "Failed to fetch shopping list for ID: $shoppingListId")
-                        }
-                } else {
-                    Timber.tag("ShoppingList").e("Failed to find userId for username: $username")
-                }
+        val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
+        shoppingListRef.update("products_list", FieldValue.arrayRemove(productMap))
+            .addOnSuccessListener {
+                Timber.tag("ShoppingList").d("Product removed from shopping list.")
             }
             .addOnFailureListener { e ->
-                Timber.tag("ShoppingList").e(e, "Failed to fetch userId for username: $username")
+                Timber.tag("ShoppingList").e(e, "Failed to remove product from shopping list.")
             }
+    }
+
+    private fun transferToPurchaseHistory(
+        db: FirebaseFirestore,
+        shoppingListId: String,
+        userId: String?
+    ) {
+        val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
+        val historyRef = db.collection("History")
+
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(shoppingListRef)
+            val productsList = snapshot.get("products_list") as List<Map<String, Any>>
+            val purchasedProducts = productsList.filter { it["checked"] == true }
+            val remainingProducts = productsList.filter { it["checked"] != true }
+
+            val shoppingListName = snapshot.getString("name") ?: "Unnamed List"
+
+            val historyData = mapOf(
+                "shoppingListName" to shoppingListName,
+                "datePurchased" to com.google.firebase.Timestamp.now(),
+                "products" to purchasedProducts,
+                "userId" to userId
+            )
+
+            transaction.set(historyRef.document(), historyData)
+            transaction.update(shoppingListRef, "products_list", remainingProducts)
+        }.addOnSuccessListener {
+            Timber.d("Purchase history updated successfully.")
+        }.addOnFailureListener { e ->
+            Timber.e(e, "Failed to transfer items to purchase history.")
+        }
+    }
+
+    private fun listenToShoppingListChanges(db: FirebaseFirestore, shoppingListId: String) {
+        val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
+
+        var previousData: Map<String, Any>? = null // Variable to store the previous snapshot data.
+
+        shoppingListRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Timber.tag("ShoppingListChanges").e(error, "Error listening to shopping list updates.")
+                return@addSnapshotListener
+            }
+
+            if (snapshot != null && snapshot.exists()) {
+                val afterData = snapshot.data // Current data snapshot
+
+                if (afterData != null) {
+                    handleShoppingListChanges(previousData, afterData)
+                    previousData = afterData // Update previous data for the next change.
+                }
+            }
+        }
+    }
+
+    private fun handleShoppingListChanges(beforeData: Map<String, Any>?, afterData: Map<String, Any>) {
+        val beforeProductList = beforeData?.get("products_list") as? List<Map<String, Any>> ?: emptyList()
+        val afterProductList = afterData["products_list"] as? List<Map<String, Any>> ?: emptyList()
+        val sharedWith = afterData["shared_with"] as? List<String> ?: emptyList()
+        val currentUser = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        // Detect added products
+        val addedProducts = afterProductList.filter { product ->
+            beforeProductList.none { it["name"] == product["name"] }
+        }
+
+        // Detect removed products
+        val removedProducts = beforeProductList.filter { product ->
+            afterProductList.none { it["name"] == product["name"] }
+        }
+
+        // Detect products marked as bought
+        val markedAsBoughtProducts = afterProductList.filter { product ->
+            product["checked"] == true &&
+                    beforeProductList.any { it["name"] == product["name"] && it["checked"] != true }
+        }
+
+        // Detect products unmarked as bought
+        val unmarkedAsBoughtProducts = afterProductList.filter { product ->
+            product["checked"] != true &&
+                    beforeProductList.any { it["name"] == product["name"] && it["checked"] == true }
+        }
+
+        // Send notifications for each change type
+        if (addedProducts.isNotEmpty()) {
+            addedProducts.forEach { product ->
+                val addedBy = product["addedBy"] as? String ?: "Unknown"
+                sendNotificationToOthers(
+                    "A new product has been added to the shopping list by $addedBy!",
+                    sharedWith,
+                    currentUser
+                )
+            }
+        }
+
+        if (removedProducts.isNotEmpty()) {
+            removedProducts.forEach { product ->
+                val addedBy = product["addedBy"] as? String ?: "Unknown"
+                sendNotificationToOthers(
+                    "A product has been removed from the shopping list by $addedBy!",
+                    sharedWith,
+                    currentUser
+                )
+            }
+        }
+
+        if (markedAsBoughtProducts.isNotEmpty()) {
+            markedAsBoughtProducts.forEach { product ->
+                val addedBy = product["addedBy"] as? String ?: "Unknown"
+                sendNotificationToOthers(
+                    "A product has been marked as bought in the shopping list by $addedBy!",
+                    sharedWith,
+                    currentUser
+                )
+            }
+        }
+
+        if (unmarkedAsBoughtProducts.isNotEmpty()) {
+            unmarkedAsBoughtProducts.forEach { product ->
+                val addedBy = product["addedBy"] as? String ?: "Unknown"
+                sendNotificationToOthers(
+                    "A product has been unmarked as bought in the shopping list by $addedBy!",
+                    sharedWith,
+                    currentUser
+                )
+            }
+        }
+    }
+
+
+    private fun sendNotificationToOthers(message: String, sharedWith: List<String>, currentUserId: String) {
+        // Exclude the current user
+        val otherUsers = sharedWith.filter { it != currentUserId }
+
+        if (otherUsers.isEmpty()) {
+            Timber.tag("ShoppingListNotification").d("No other users to notify.")
+            return
+        }
+
+        // Check for notification permission
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                Timber.tag("ShoppingListNotification").w("Notification permission not granted. Cannot show notification.")
+                return
+            }
+        }
+
+        val title = "Shopping List Update"
+        val notification = NotificationCompat.Builder(this, MainActivity.CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
+        NotificationManagerCompat.from(this).notify(0, notification)
+        Timber.tag("ShoppingListNotification").d("Notification sent to others: $message")
     }
 }

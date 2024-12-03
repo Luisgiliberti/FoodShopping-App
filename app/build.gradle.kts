@@ -53,10 +53,14 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material3:material3-window-size-class")
 
-    // Firebase BOM
-    implementation(platform("com.google.firebase:firebase-bom:32.3.1"))
-    implementation("com.google.firebase:firebase-auth-ktx")
-    implementation("com.google.firebase:firebase-firestore-ktx")
+    // Firebase BOM to manage versions
+    implementation (platform("com.google.firebase:firebase-bom:33.6.0"))
+
+    // Add Firebase libraries without specifying versions
+    implementation ("com.google.firebase:firebase-firestore-ktx")
+    implementation ("com.google.firebase:firebase-auth-ktx")
+    implementation ("com.google.firebase:firebase-messaging")
+    implementation ("com.google.firebase:firebase-analytics")
 
     // Charts
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")

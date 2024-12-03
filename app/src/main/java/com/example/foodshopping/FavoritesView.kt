@@ -26,21 +26,29 @@ fun FavoritesView(
     shoppingLists: List<String>,
     onAddFavorite: (Product) -> Unit,
     onRemoveFavorite: (Product) -> Unit,
-    onAddToShoppingList: (Product, String, Int) -> Unit, // Ensure this parameter is defined and used
+    onAddToShoppingList: (Product, String, Int) -> Unit // Ensure this parameter is defined and used
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
-    Box {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFFC8E6C9),
+                        Color(0xFFBBDEFB),
+                        Color(0xFFFFF176)
+                    )
+                )
+            )
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color(0xFFFFCDD2), Color(0xFFBBDEFB), Color(0xFFFFF176))
-                    )
-                )
-                .padding(16.dp),
+                .padding(16.dp)
+                .padding(bottom = 56.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Search Text Field

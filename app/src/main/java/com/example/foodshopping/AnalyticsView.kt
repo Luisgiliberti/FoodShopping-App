@@ -2,13 +2,13 @@ package com.example.foodshopping
 
 import android.graphics.Color as AndroidColor
 import android.content.Context
-import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -23,15 +23,20 @@ import com.github.mikephil.charting.data.PieEntry
 import com.github.mikephil.charting.utils.ColorTemplate
 
 @Composable
-fun AnalyticsScreen(categoryData: Map<String, Int>) {
+fun AnalyticsScreen(
+    categoryData: Map<String, Int>,
+    topCategories: List<Pair<String, Int>>,
+    topCategoryProducts: Map<String, Map<String, Int>>,
+    randomProduct: String
+) {
     val context = LocalContext.current
-    val pieData = preparePieData(context, categoryData)
+    val pieData = remember(categoryData) { preparePieData(context, categoryData) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                brush = Brush.linearGradient(
+                brush = Brush.verticalGradient(
                     colors = listOf(
                         Color(0xFFC8E6C9),
                         Color(0xFFBBDEFB),
@@ -40,37 +45,35 @@ fun AnalyticsScreen(categoryData: Map<String, Int>) {
                 )
             )
     ) {
-        // Main content
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(16.dp)
                 .padding(bottom = 56.dp) // Leave space for the navigation bar
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Analytics: Purchases by Category",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = Color.Black,
+            // Analytics Title
+            item {
+                Box(
                     modifier = Modifier
-                        .padding(vertical = 16.dp)
-                        .align(Alignment.CenterHorizontally)
-                )
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Analytics",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+            }
 
+            // Main Pie Chart
+            item {
                 AndroidView(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp)
-                        .align(Alignment.CenterHorizontally),
+                        .height(300.dp),
                     factory = { context ->
                         PieChart(context).apply {
-                            layoutParams = FrameLayout.LayoutParams(
-                                FrameLayout.LayoutParams.MATCH_PARENT,
-                                FrameLayout.LayoutParams.MATCH_PARENT
-                            )
                             data = pieData
                             description.isEnabled = false
                             setUsePercentValues(true)
@@ -83,23 +86,38 @@ fun AnalyticsScreen(categoryData: Map<String, Int>) {
                         pieChart.invalidate()
                     }
                 )
-
                 Spacer(modifier = Modifier.height(16.dp))
+            }
 
-                LazyColumn {
-                    items(categoryData.toList()) { (category, count) ->
-                        Text(
-                            text = "$category: $count purchases",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Color.Black,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
-                    }
+            // Top Categories with Detailed Graphs
+            items(topCategories) { (category, count) ->
+                val productsInCategory = topCategoryProducts[category] ?: emptyMap()
+                DetailedCategoryGraph(
+                    category = category,
+                    products = productsInCategory,
+                    context = context,
+                    rank = topCategories.indexOfFirst { it.first == category } + 1
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Random Product of the Month
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Random Product of the Month: $randomProduct",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.DarkGray,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
                 }
             }
         }
 
-        // Bottom navigation bar
+        // Bottom Navigation Bar
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -110,53 +128,85 @@ fun AnalyticsScreen(categoryData: Map<String, Int>) {
     }
 }
 
-fun preparePieData(context: Context, categoryData: Map<String, Int>): PieData {
-    val entries = categoryData.map { (category, count) ->
-        PieEntry(count.toFloat(), category)
+@Composable
+fun DetailedCategoryGraph(
+    category: String,
+    products: Map<String, Int>,
+    context: Context,
+    rank: Int
+) {
+    // Handle Empty Products Case
+    if (products.isEmpty()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Top $rank Category: $category",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.Black
+            )
+            Text(
+                text = "No product data available for this category.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+        }
+        return
     }
 
-    val dataSet = PieDataSet(entries, "Categories").apply {
+    val aggregatedProducts = products.mapValues { it.value.toFloat() } // Aggregate product counts
+    val pieData = PieData(PieDataSet(
+        aggregatedProducts.map { (product, percentage) -> PieEntry(percentage, product) },
+        "Products in $category"
+    ).apply {
+        colors = ColorTemplate.COLORFUL_COLORS.toList()
+        valueTextColor = AndroidColor.BLACK
+        valueTextSize = 12f
+    })
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
+        Text(
+            text = "Top $rank Category: $category",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.Black
+        )
+        AndroidView(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(150.dp),
+            factory = {
+                PieChart(it).apply {
+                    data = pieData
+                    description.isEnabled = false
+                    legend.isEnabled = true
+                    setDrawEntryLabels(false) // Disable entry labels to hide product names
+                }
+            },
+            update = { pieChart ->
+                pieChart.data = pieData
+                pieChart.invalidate()
+            }
+        )
+    }
+}
+
+fun preparePieData(context: Context, categoryData: Map<String, Int>): PieData {
+    val aggregatedData = categoryData.map { (category, count) ->
+        PieEntry(count.toFloat(), category) // Aggregate counts for each category
+    }
+
+    val dataSet = PieDataSet(aggregatedData, "Categories").apply {
         colors = ColorTemplate.COLORFUL_COLORS.toList()
         valueTextColor = AndroidColor.BLACK
         valueTextSize = 12f
     }
 
     return PieData(dataSet)
-}
-
-fun getColorForCategory(category: String): Color {
-    return when (category) {
-        "Fruit" -> Color(0xFFFFA726)
-        "Pastry" -> Color(0xFF29B6F6)
-        "Dairy" -> Color(0xFF66BB6A)
-        "Vegetable" -> Color(0xFF81C784)
-        "Meat" -> Color(0xFFEF5350)
-        "Spice" -> Color(0xFFFF7043)
-        "Grain" -> Color(0xFF8D6E63)
-        "Sweetener" -> Color(0xFFFFC107)
-        "Oil" -> Color(0xFFFFD54F)
-        "Protein" -> Color(0xFF26C6DA)
-        "Nuts" -> Color(0xFFAB47BC)
-        "Herb" -> Color(0xFF8E24AA)
-        "Legume" -> Color(0xFF26A69A)
-        "Condiment" -> Color(0xFF78909C)
-        "Fermented Food" -> Color(0xFFFFA000)
-        "Spread" -> Color(0xFFFF8A65)
-        "Medicine" -> Color(0xFFD32F2F)
-        "Snack" -> Color(0xFF4DB6AC)
-        "Seed" -> Color(0xFF4CAF50)
-        "Cereal" -> Color(0xFFFFB74D)
-        "Beverage" -> Color(0xFF9575CD)
-        "Dairy Alternative" -> Color(0xFFBDBDBD)
-        "Sauce" -> Color(0xFF9E9E9E)
-        "Frozen Food" -> Color(0xFF42A5F5)
-        "Home Supplies" -> Color(0xFF616161)
-        "Personal Care" -> Color(0xFFBA68C8)
-        "Flour" -> Color(0xFFF5F5F5)
-        "Starch" -> Color(0xFFFFF176)
-        "Alcoholic Beverage" -> Color(0xFFCE93D8)
-        "Supplement" -> Color(0xFF90A4AE)
-        "Confection" -> Color(0xFFFFC1E3)
-        else -> Color(0xFFAB47BC)
-    }
 }
