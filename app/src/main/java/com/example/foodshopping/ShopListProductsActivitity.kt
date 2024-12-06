@@ -179,13 +179,38 @@ class ShopListProductsActivity : ComponentActivity() {
         db: FirebaseFirestore,
         shoppingListId: String
     ) {
-        val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
-        shoppingListRef.update("products_list", FieldValue.arrayRemove(productMap))
-            .addOnSuccessListener {
-                Timber.tag("ShoppingList").d("Product removed from shopping list.")
+        val username = productMap["addedBy"] as? String ?: return
+
+        db.collection("User")
+            .whereEqualTo("username", username)
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                val userId = querySnapshot.documents.firstOrNull()?.id
+                if (userId != null) {
+                    val productData = mapOf(
+                        "name" to productMap["name"],
+                        "category" to productMap["category"],
+                        "quantity" to productMap["quantity"],
+                        "checked" to productMap["checked"],
+                        "addedBy" to userId
+                    )
+
+                    val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
+
+                    shoppingListRef.update("products_list", FieldValue.arrayRemove(productData))
+                        .addOnSuccessListener {
+                            Timber.tag("ShoppingList").d("Product removed from shopping list.")
+                        }
+                        .addOnFailureListener { e ->
+                            Timber.tag("ShoppingList")
+                                .e(e, "Failed to remove product from shopping list")
+                        }
+                } else {
+                    Timber.tag("ShoppingList").e("Failed to find userId for username: $username")
+                }
             }
             .addOnFailureListener { e ->
-                Timber.tag("ShoppingList").e(e, "Failed to remove product from shopping list.")
+                Timber.tag("ShoppingList").e(e, "Failed to fetch userId for username: $username")
             }
     }
 
