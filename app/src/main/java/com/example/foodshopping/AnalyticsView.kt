@@ -49,7 +49,8 @@ fun AnalyticsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
-                .padding(bottom = 56.dp) // Leave space for the navigation bar
+                .padding(bottom = 56.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Analytics Title
             item {
@@ -61,7 +62,9 @@ fun AnalyticsScreen(
                 ) {
                     Text(
                         text = "Analytics",
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color.Black,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
             }

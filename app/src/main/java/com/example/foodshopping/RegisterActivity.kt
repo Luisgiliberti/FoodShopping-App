@@ -63,8 +63,7 @@ class RegisterActivity : ComponentActivity() {
             "username" to username,
             "email" to email,
             "favorites" to listOf<String>(),
-            "notification_settings" to mapOf("item_updates" to true, "reminders" to true),
-            "recently_used_items" to listOf<String>()
+            "notification_settings" to mapOf("item_updates" to true, "shopping_status" to true)
         )
 
         db.collection("User").document(userId).set(user)

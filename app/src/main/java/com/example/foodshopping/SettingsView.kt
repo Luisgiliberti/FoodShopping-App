@@ -53,15 +53,15 @@ fun SettingsScreenView() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.Start
+                .padding(16.dp)
+                .padding(bottom = 56.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = "Settings",
-                style = MaterialTheme.typography.headlineLarge,
+                style = MaterialTheme.typography.headlineMedium,
                 color = Color.Black,
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
             // Toggle for shopping list notifications
@@ -136,16 +136,4 @@ fun SettingsScreenView() {
     }
 }
 
-// Function to update notification settings in the database
-fun updateNotificationSetting(
-    db: FirebaseFirestore,
-    userId: String?,
-    settingPath: String,
-    newValue: Boolean
-) {
-    userId?.let {
-        db.collection("User").document(it).update(settingPath, newValue)
-            .addOnSuccessListener { Log.d("Settings", "Notification updated for $settingPath") }
-            .addOnFailureListener { Log.w("Settings", "Failed to update $settingPath", it) }
-    }
-}
+

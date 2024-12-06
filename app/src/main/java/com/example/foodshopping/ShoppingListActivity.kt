@@ -1,15 +1,26 @@
 package com.example.foodshopping
 
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import com.example.foodshopping.MainActivity.Companion.CHANNEL_ID
 import com.example.foodshopping.ui.theme.FoodShoppingTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import timber.log.Timber
 
 data class ShoppingList(
     val name: String,
@@ -32,8 +43,23 @@ class ShoppingListActivity : ComponentActivity() {
     private var isShopping by mutableStateOf(false)
     private var friendsShopping by mutableStateOf<List<String>>(emptyList())
 
+    // Permission launcher for notification permissions
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                Timber.d("Notification permission granted.")
+            } else {
+                Timber.w("Notification permission denied.")
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Request notification permission if required
+        requestNotificationPermission()
+
+        createNotificationChannel()
         fetchShoppingLists()
         fetchShoppingStatus()
 
@@ -67,27 +93,121 @@ class ShoppingListActivity : ComponentActivity() {
         }
     }
 
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "Shopping Notifications"
+            val descriptionText = "Notifications for shopping list updates"
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager: NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun fetchFriendsShoppingStatus() {
+        val shoppingFriends = mutableStateListOf<String>() // Use a mutable state list for real-time updates
+
+        friendsList.forEach { friendEmail ->
+            db.collection("User")
+                .whereEqualTo("email", friendEmail)
+                .addSnapshotListener { snapshots, error ->
+                    if (error != null) {
+                        Log.e("ShoppingListActivity", "Error fetching friend's shopping status: $error")
+                        return@addSnapshotListener
+                    }
+
+                    snapshots?.documents?.forEach { doc ->
+                        val isShopping = doc.getBoolean("shopping_status") ?: false
+                        val username = doc.getString("username") ?: "Unknown"
+
+                        if (isShopping && !shoppingFriends.contains(username)) {
+                            // Friend started shopping
+                            shoppingFriends.add(username)
+                            sendLocalNotification("Shopping Update", "Your friend $username started shopping!")
+                        } else if (!isShopping && shoppingFriends.contains(username)) {
+                            // Friend stopped shopping
+                            shoppingFriends.remove(username)
+                            sendLocalNotification("Shopping Update", "Your friend $username is not shopping anymore.")
+                        }
+                    }
+
+                    // Update the real-time list of friends shopping
+                    friendsShopping = shoppingFriends
+                }
+        }
+    }
+
     private fun fetchShoppingStatus() {
         userId?.let { uid ->
-            db.collection("User").document(uid).get()
-                .addOnSuccessListener { doc ->
-                    isShopping = doc.getBoolean("shopping_status") ?: false
+            db.collection("User").document(uid).addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("ShoppingListActivity", "Error fetching shopping status: $error")
+                    return@addSnapshotListener
                 }
-                .addOnFailureListener { e ->
-                    Log.e("ShoppingListActivity", "Error fetching shopping status: $e")
-                }
+                isShopping = snapshot?.getBoolean("shopping_status") ?: false
+            }
         }
     }
 
     private fun updateShoppingStatus(newStatus: Boolean) {
         userId?.let { uid ->
             db.collection("User").document(uid).update("shopping_status", newStatus)
-                .addOnSuccessListener {
-                    isShopping = newStatus
-                    fetchFriendsShoppingStatus()
-                }
                 .addOnFailureListener { e ->
                     Log.e("ShoppingListActivity", "Error updating shopping status: $e")
+                }
+        }
+    }
+
+    private fun sendLocalNotification(title: String, message: String) {
+        userId?.let { uid ->
+            db.collection("User").document(uid).get()
+                .addOnSuccessListener { document ->
+                    // Check if shopping_status in notification_settings is false
+                    val shoppingStatusEnabled =
+                        document.getBoolean("notification_settings.shopping_status") ?: false
+                    if (!shoppingStatusEnabled) {
+                        Timber.d("Notification not sent because shopping_status is false.")
+                        return@addOnSuccessListener
+                    }
+
+                    // Proceed to send notification if shopping_status is true
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ActivityCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        Timber.w("Notification permission not granted.")
+                        return@addOnSuccessListener
+                    }
+
+                    val notificationId = System.currentTimeMillis().toInt()
+                    val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+                        .setSmallIcon(R.drawable.ic_notification) // Replace with your app's icon
+                        .setContentTitle(title)
+                        .setContentText(message)
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .build()
+
+                    NotificationManagerCompat.from(this).notify(notificationId, notification)
+                }
+                .addOnFailureListener { e ->
+                    Timber.e("Failed to fetch notification settings: $e")
                 }
         }
     }
@@ -131,7 +251,8 @@ class ShoppingListActivity : ComponentActivity() {
                         .addOnSuccessListener { sharedSnapshots ->
                             sharedSnapshots?.documents?.forEach { doc ->
                                 val createdBy = doc.getString("created_by") ?: ""
-                                val sharedWith = (doc.get("shared_with") as? List<String>) ?: emptyList()
+                                val sharedWith =
+                                    (doc.get("shared_with") as? List<String>) ?: emptyList()
                                 db.collection("User").document(createdBy).get()
                                     .addOnSuccessListener { creatorDoc ->
                                         val username = creatorDoc.getString("username") ?: "Unknown"
@@ -144,38 +265,20 @@ class ShoppingListActivity : ComponentActivity() {
                                             isOwned = false
                                         )
                                         tempShoppingLists.add(list)
-                                        shoppingLists = tempShoppingLists // Update the combined list
+                                        shoppingLists =
+                                            tempShoppingLists // Update the combined list
                                     }
                             }
                         }
                         .addOnFailureListener { e ->
-                            Log.e("ShoppingListActivity", "Error fetching shared shopping lists: $e")
+                            Log.e(
+                                "ShoppingListActivity",
+                                "Error fetching shared shopping lists: $e"
+                            )
                         }
                 }
                 .addOnFailureListener { e ->
                     Log.e("ShoppingListActivity", "Error fetching owned shopping lists: $e")
-                }
-        }
-    }
-
-    private fun fetchFriendsShoppingStatus() {
-        val shoppingFriends = mutableListOf<String>()
-        friendsList.forEach { friendEmail ->
-            db.collection("User")
-                .whereEqualTo("email", friendEmail)
-                .get()
-                .addOnSuccessListener { documents ->
-                    for (doc in documents) {
-                        val isShopping = doc.getBoolean("shopping_status") ?: false
-                        val username = doc.getString("username") ?: "Unknown"
-                        if (isShopping) {
-                            shoppingFriends.add(username)
-                        }
-                    }
-                    friendsShopping = shoppingFriends
-                }
-                .addOnFailureListener { e ->
-                    Log.e("ShoppingListActivity", "Error fetching friend's shopping status: $e")
                 }
         }
     }

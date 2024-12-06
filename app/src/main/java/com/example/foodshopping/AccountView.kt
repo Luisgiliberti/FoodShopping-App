@@ -134,9 +134,10 @@ fun AccountScreenContent(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Account Details",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 16.dp)
+                text = "My Account",
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color.Black,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
             Text(text = "Username: $username", style = MaterialTheme.typography.bodyMedium)

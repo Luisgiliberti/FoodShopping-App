@@ -63,10 +63,10 @@ fun ShoppingListScreenView(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxHeight()
-                .padding(bottom = 64.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top,
+                .fillMaxSize()
+                .padding(16.dp)
+                .padding(bottom = 56.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = "Shopping List",

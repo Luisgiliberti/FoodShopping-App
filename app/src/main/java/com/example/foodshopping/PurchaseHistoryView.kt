@@ -32,15 +32,15 @@ fun PurchaseHistoryScreenView(purchaseHistory: List<Map<String, Any>>) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 56.dp)
+                .padding(16.dp)
+                .padding(bottom = 56.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = "Purchase History",
                 style = MaterialTheme.typography.headlineMedium,
                 color = Color.Black,
-                modifier = Modifier
-                    .padding(vertical = 16.dp)
-                    .align(Alignment.CenterHorizontally)
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
             if (purchaseHistory.isEmpty()) {
