@@ -1,25 +1,27 @@
 package com.example.foodshopping
 
-import android.graphics.Color as AndroidColor
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.github.mikephil.charting.charts.PieChart
+import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.PieData
 import com.github.mikephil.charting.data.PieDataSet
 import com.github.mikephil.charting.data.PieEntry
+import com.github.mikephil.charting.highlight.Highlight
+import com.github.mikephil.charting.listener.OnChartValueSelectedListener
 import com.github.mikephil.charting.utils.ColorTemplate
 
 @Composable
@@ -29,8 +31,14 @@ fun AnalyticsScreen(
     topCategoryProducts: Map<String, Map<String, Int>>,
     randomProduct: String
 ) {
-    val context = LocalContext.current
-    val pieData = remember(categoryData) { preparePieData(context, categoryData) }
+    val pieEntries = categoryData.map { PieEntry(it.value.toFloat(), it.key) }
+    val pieDataSet = PieDataSet(pieEntries, "Categories").apply {
+        colors = ColorTemplate.COLORFUL_COLORS.toList()
+        valueTextSize = 16f // Increased font size for values inside the chart
+    }
+    val pieData = PieData(pieDataSet)
+
+    val selectedLabel = remember { mutableStateOf<String?>(null) }
 
     Box(
         modifier = Modifier
@@ -81,7 +89,18 @@ fun AnalyticsScreen(
                             description.isEnabled = false
                             setUsePercentValues(true)
                             setDrawEntryLabels(false)
-                            legend.isEnabled = true
+                            legend.isEnabled = false // Disable default legend
+
+                            setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
+                                override fun onValueSelected(e: Entry?, h: Highlight?) {
+                                    val pieEntry = e as? PieEntry
+                                    selectedLabel.value = pieEntry?.label
+                                }
+
+                                override fun onNothingSelected() {
+                                    selectedLabel.value = null
+                                }
+                            })
                         }
                     },
                     update = { pieChart ->
@@ -92,13 +111,21 @@ fun AnalyticsScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
+            // Custom Legend for Main Pie Chart
+            item {
+                CustomLegend(
+                    entries = categoryData.keys.toList(),
+                    colors = ColorTemplate.COLORFUL_COLORS.toList(),
+                    selectedLabel = selectedLabel.value
+                )
+            }
+
             // Top Categories with Detailed Graphs
-            items(topCategories) { (category, count) ->
+            items(topCategories) { (category) ->
                 val productsInCategory = topCategoryProducts[category] ?: emptyMap()
                 DetailedCategoryGraph(
                     category = category,
                     products = productsInCategory,
-                    context = context,
                     rank = topCategories.indexOfFirst { it.first == category } + 1
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -111,10 +138,11 @@ fun AnalyticsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Random Product of the Month: $randomProduct",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.DarkGray,
-                        modifier = Modifier.padding(vertical = 16.dp)
+                        text = "Random Product: $randomProduct",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = MaterialTheme.typography.titleLarge.fontSize),
+                        color = Color.Black,
+                        modifier = Modifier.padding(vertical = 16.dp) // Adjusted padding for balance
                     )
                 }
             }
@@ -135,10 +163,8 @@ fun AnalyticsScreen(
 fun DetailedCategoryGraph(
     category: String,
     products: Map<String, Int>,
-    context: Context,
     rank: Int
 ) {
-    // Handle Empty Products Case
     if (products.isEmpty()) {
         Column(
             modifier = Modifier
@@ -154,21 +180,21 @@ fun DetailedCategoryGraph(
             Text(
                 text = "No product data available for this category.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
+                color = Color.Black
             )
         }
         return
     }
 
-    val aggregatedProducts = products.mapValues { it.value.toFloat() } // Aggregate product counts
-    val pieData = PieData(PieDataSet(
-        aggregatedProducts.map { (product, percentage) -> PieEntry(percentage, product) },
-        "Products in $category"
-    ).apply {
+    val aggregatedProducts = products.mapValues { it.value.toFloat() }
+    val pieEntries = aggregatedProducts.map { PieEntry(it.value, it.key) }
+    val pieDataSet = PieDataSet(pieEntries, "Products in $category").apply {
         colors = ColorTemplate.COLORFUL_COLORS.toList()
-        valueTextColor = AndroidColor.BLACK
-        valueTextSize = 12f
-    })
+        valueTextSize = 16f // Larger numbers inside the graph
+    }
+    val pieData = PieData(pieDataSet)
+
+    val selectedLabel = remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -183,13 +209,25 @@ fun DetailedCategoryGraph(
         AndroidView(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(150.dp),
-            factory = {
-                PieChart(it).apply {
+                .height(200.dp),
+            factory = { context ->
+                PieChart(context).apply {
                     data = pieData
                     description.isEnabled = false
-                    legend.isEnabled = true
-                    setDrawEntryLabels(false) // Disable entry labels to hide product names
+                    setUsePercentValues(true)
+                    setDrawEntryLabels(false)
+                    legend.isEnabled = false // Disable default legend
+
+                    setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
+                        override fun onValueSelected(e: Entry?, h: Highlight?) {
+                            val pieEntry = e as? PieEntry
+                            selectedLabel.value = pieEntry?.label
+                        }
+
+                        override fun onNothingSelected() {
+                            selectedLabel.value = null
+                        }
+                    })
                 }
             },
             update = { pieChart ->
@@ -197,19 +235,43 @@ fun DetailedCategoryGraph(
                 pieChart.invalidate()
             }
         )
+
+        // Custom Legend for Detailed Graph
+        CustomLegend(
+            entries = products.keys.toList(),
+            colors = ColorTemplate.COLORFUL_COLORS.toList(),
+            selectedLabel = selectedLabel.value
+        )
     }
 }
 
-fun preparePieData(context: Context, categoryData: Map<String, Int>): PieData {
-    val aggregatedData = categoryData.map { (category, count) ->
-        PieEntry(count.toFloat(), category) // Aggregate counts for each category
+@Composable
+fun CustomLegend(entries: List<String>, colors: List<Int>, selectedLabel: String?) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp),
+        horizontalAlignment = Alignment.Start
+    ) {
+        entries.forEachIndexed { index, entry ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(vertical = 4.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .background(Color(colors[index]))
+                        .padding(end = 8.dp)
+                )
+                Text(
+                    text = entry,
+                    color = if (entry == selectedLabel) Color.Red else Color.Black,
+                    style = if (entry == selectedLabel) MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                    else MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+            }
+        }
     }
-
-    val dataSet = PieDataSet(aggregatedData, "Categories").apply {
-        colors = ColorTemplate.COLORFUL_COLORS.toList()
-        valueTextColor = AndroidColor.BLACK
-        valueTextSize = 12f
-    }
-
-    return PieData(dataSet)
 }
