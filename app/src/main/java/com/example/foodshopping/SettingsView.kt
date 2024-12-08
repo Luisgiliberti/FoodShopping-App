@@ -22,7 +22,6 @@ fun SettingsScreenView() {
     var shoppingListNotificationsEnabled by remember { mutableStateOf(false) }
     var shoppingStatusNotificationsEnabled by remember { mutableStateOf(false) }
 
-    // Fetch notification settings from the database
     LaunchedEffect(Unit) {
         userId?.let { uid ->
             db.collection("User").document(uid).get()
@@ -64,7 +63,6 @@ fun SettingsScreenView() {
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            // Toggle for shopping list notifications
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -95,7 +93,6 @@ fun SettingsScreenView() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Toggle for shopping status notifications
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -125,7 +122,6 @@ fun SettingsScreenView() {
             }
         }
 
-        // Bottom Navigation
         Box(
             modifier = Modifier
                 .fillMaxWidth()

@@ -38,12 +38,11 @@ class ShoppingListActivity : ComponentActivity() {
     private val userId = auth.currentUser?.uid
     private val userEmail = auth.currentUser?.email
 
-    private var shoppingLists by mutableStateOf<List<ShoppingList>>(emptyList()) // Combined lists
+    private var shoppingLists by mutableStateOf<List<ShoppingList>>(emptyList())
     private var friendsList by mutableStateOf<List<String>>(emptyList())
     private var isShopping by mutableStateOf(false)
     private var friendsShopping by mutableStateOf<List<String>>(emptyList())
 
-    // Permission launcher for notification permissions
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
@@ -56,7 +55,6 @@ class ShoppingListActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Request notification permission if required
         requestNotificationPermission()
 
         createNotificationChannel()
@@ -120,7 +118,7 @@ class ShoppingListActivity : ComponentActivity() {
     }
 
     private fun fetchFriendsShoppingStatus() {
-        val shoppingFriends = mutableStateListOf<String>() // Use a mutable state list for real-time updates
+        val shoppingFriends = mutableStateListOf<String>()
 
         friendsList.forEach { friendEmail ->
             db.collection("User")
@@ -136,17 +134,14 @@ class ShoppingListActivity : ComponentActivity() {
                         val username = doc.getString("username") ?: "Unknown"
 
                         if (isShopping && !shoppingFriends.contains(username)) {
-                            // Friend started shopping
                             shoppingFriends.add(username)
                             sendLocalNotification("Shopping Update", "Your friend $username started shopping!")
                         } else if (!isShopping && shoppingFriends.contains(username)) {
-                            // Friend stopped shopping
                             shoppingFriends.remove(username)
                             sendLocalNotification("Shopping Update", "Your friend $username is not shopping anymore.")
                         }
                     }
 
-                    // Update the real-time list of friends shopping
                     friendsShopping = shoppingFriends
                 }
         }
@@ -177,7 +172,6 @@ class ShoppingListActivity : ComponentActivity() {
         userId?.let { uid ->
             db.collection("User").document(uid).get()
                 .addOnSuccessListener { document ->
-                    // Check if shopping_status in notification_settings is false
                     val shoppingStatusEnabled =
                         document.getBoolean("notification_settings.shopping_status") ?: false
                     if (!shoppingStatusEnabled) {
@@ -185,7 +179,6 @@ class ShoppingListActivity : ComponentActivity() {
                         return@addOnSuccessListener
                     }
 
-                    // Proceed to send notification if shopping_status is true
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                         ActivityCompat.checkSelfPermission(
                             this,
@@ -198,7 +191,7 @@ class ShoppingListActivity : ComponentActivity() {
 
                     val notificationId = System.currentTimeMillis().toInt()
                     val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-                        .setSmallIcon(R.drawable.ic_notification) // Replace with your app's icon
+                        .setSmallIcon(R.drawable.ic_notification)
                         .setContentTitle(title)
                         .setContentText(message)
                         .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -214,9 +207,9 @@ class ShoppingListActivity : ComponentActivity() {
 
     private fun fetchShoppingLists() {
         userId?.let { uid ->
-            val tempShoppingLists = mutableListOf<ShoppingList>()
+            val ownedShoppingLists = mutableListOf<ShoppingList>()
+            val sharedShoppingLists = mutableListOf<ShoppingList>()
 
-            // Fetch user's friends list
             db.collection("User").document(uid).get()
                 .addOnSuccessListener { doc ->
                     friendsList = (doc.get("friends_list") as? List<String>) ?: emptyList()
@@ -226,11 +219,15 @@ class ShoppingListActivity : ComponentActivity() {
                     Log.e("ShoppingListActivity", "Error fetching friends list: $e")
                 }
 
-            // Fetch owned shopping lists
             db.collection("ShoppingList")
                 .whereEqualTo("created_by", uid)
-                .get()
-                .addOnSuccessListener { snapshots ->
+                .addSnapshotListener { snapshots, error ->
+                    if (error != null) {
+                        Log.e("ShoppingListActivity", "Error fetching owned shopping lists: $error")
+                        return@addSnapshotListener
+                    }
+
+                    ownedShoppingLists.clear()
                     snapshots?.documents?.forEach { doc ->
                         val sharedWith = (doc.get("shared_with") as? List<String>) ?: emptyList()
                         val list = ShoppingList(
@@ -241,46 +238,53 @@ class ShoppingListActivity : ComponentActivity() {
                             sharedWith = sharedWith,
                             isOwned = true
                         )
-                        tempShoppingLists.add(list)
+                        ownedShoppingLists.add(list)
                     }
 
-                    // Fetch shared shopping lists
-                    db.collection("ShoppingList")
-                        .whereArrayContains("shared_with", userEmail ?: "")
-                        .get()
-                        .addOnSuccessListener { sharedSnapshots ->
-                            sharedSnapshots?.documents?.forEach { doc ->
-                                val createdBy = doc.getString("created_by") ?: ""
-                                val sharedWith =
-                                    (doc.get("shared_with") as? List<String>) ?: emptyList()
-                                db.collection("User").document(createdBy).get()
-                                    .addOnSuccessListener { creatorDoc ->
-                                        val username = creatorDoc.getString("username") ?: "Unknown"
-                                        val list = ShoppingList(
-                                            name = doc.getString("name") ?: "",
-                                            id = doc.id,
-                                            createdBy = createdBy,
-                                            username = username,
-                                            sharedWith = sharedWith,
-                                            isOwned = false
-                                        )
-                                        tempShoppingLists.add(list)
-                                        shoppingLists =
-                                            tempShoppingLists // Update the combined list
-                                    }
-                            }
-                        }
-                        .addOnFailureListener { e ->
-                            Log.e(
-                                "ShoppingListActivity",
-                                "Error fetching shared shopping lists: $e"
-                            )
-                        }
+                    updateShoppingLists(ownedShoppingLists, sharedShoppingLists)
                 }
-                .addOnFailureListener { e ->
-                    Log.e("ShoppingListActivity", "Error fetching owned shopping lists: $e")
+
+            db.collection("ShoppingList")
+                .whereArrayContains("shared_with", userEmail ?: "")
+                .addSnapshotListener { sharedSnapshots, error ->
+                    if (error != null) {
+                        Log.e("ShoppingListActivity", "Error fetching shared shopping lists: $error")
+                        return@addSnapshotListener
+                    }
+
+                    sharedShoppingLists.clear()
+                    sharedSnapshots?.documents?.forEach { doc ->
+                        val createdBy = doc.getString("created_by") ?: ""
+                        val sharedWith = (doc.get("shared_with") as? List<String>) ?: emptyList()
+
+                        db.collection("User").document(createdBy).get()
+                            .addOnSuccessListener { creatorDoc ->
+                                val username = creatorDoc.getString("username") ?: "Unknown"
+                                val list = ShoppingList(
+                                    name = doc.getString("name") ?: "",
+                                    id = doc.id,
+                                    createdBy = createdBy,
+                                    username = username,
+                                    sharedWith = sharedWith,
+                                    isOwned = false
+                                )
+                                sharedShoppingLists.add(list)
+
+                                updateShoppingLists(ownedShoppingLists, sharedShoppingLists)
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("ShoppingListActivity", "Error fetching creator username: $e")
+                            }
+                    }
                 }
         }
+    }
+
+    private fun updateShoppingLists(
+        ownedShoppingLists: List<ShoppingList>,
+        sharedShoppingLists: List<ShoppingList>
+    ) {
+        shoppingLists = ownedShoppingLists + sharedShoppingLists
     }
 
     private fun addShoppingList(name: String, sharedFriends: List<String>) {

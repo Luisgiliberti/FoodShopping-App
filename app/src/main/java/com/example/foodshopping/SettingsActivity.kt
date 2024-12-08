@@ -25,7 +25,6 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
-// Function to update notification settings in the database
 fun updateNotificationSetting(
     db: FirebaseFirestore,
     userId: String?,

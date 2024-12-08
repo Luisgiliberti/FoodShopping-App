@@ -39,7 +39,7 @@ class PurchaseHistoryActivity : ComponentActivity() {
         onUpdate: (List<Map<String, Any>>) -> Unit
     ) {
         db.collection("History")
-            .whereEqualTo("userId", userId) // Filter by the logged-in user's ID
+            .whereEqualTo("userId", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.tag("PurchaseHistory").e(error, "Failed to fetch purchase history.")

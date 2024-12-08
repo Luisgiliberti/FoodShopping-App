@@ -44,7 +44,6 @@ fun ShoppingListScreenView(
         }
     }
 
-    // State for the Buy and Confirmation dialogs
     var showConfirmDialog by remember { mutableStateOf(false) }
     val selectedProducts = shoppingList.filter { it["checked"] as? Boolean == true }
 

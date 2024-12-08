@@ -1,5 +1,6 @@
 package com.example.foodshopping
 
+import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,7 +23,6 @@ import com.github.mikephil.charting.data.PieDataSet
 import com.github.mikephil.charting.data.PieEntry
 import com.github.mikephil.charting.highlight.Highlight
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener
-import com.github.mikephil.charting.utils.ColorTemplate
 
 @Composable
 fun AnalyticsScreen(
@@ -31,10 +31,13 @@ fun AnalyticsScreen(
     topCategoryProducts: Map<String, Map<String, Int>>,
     randomProduct: String
 ) {
-    val pieEntries = categoryData.map { PieEntry(it.value.toFloat(), it.key) }
-    val pieDataSet = PieDataSet(pieEntries, "Categories").apply {
-        colors = ColorTemplate.COLORFUL_COLORS.toList()
-        valueTextSize = 16f // Increased font size for values inside the chart
+    val categoryColors = generateDistinctColors(categoryData.keys.size)
+    val pieEntries = categoryData.entries.mapIndexed { index, (key, value) ->
+        PieEntry(value.toFloat(), key) to categoryColors[index]
+    }
+    val pieDataSet = PieDataSet(pieEntries.map { it.first }, "Categories").apply {
+        colors = pieEntries.map { it.second }
+        valueTextSize = 16f
     }
     val pieData = PieData(pieDataSet)
 
@@ -60,7 +63,6 @@ fun AnalyticsScreen(
                 .padding(bottom = 56.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Analytics Title
             item {
                 Box(
                     modifier = Modifier
@@ -71,13 +73,11 @@ fun AnalyticsScreen(
                     Text(
                         text = "Analytics",
                         style = MaterialTheme.typography.headlineMedium,
-                        color = Color.Black,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        color = Color.Black
                     )
                 }
             }
 
-            // Main Pie Chart
             item {
                 AndroidView(
                     modifier = Modifier
@@ -89,8 +89,7 @@ fun AnalyticsScreen(
                             description.isEnabled = false
                             setUsePercentValues(true)
                             setDrawEntryLabels(false)
-                            legend.isEnabled = false // Disable default legend
-
+                            legend.isEnabled = false
                             setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
                                 override fun onValueSelected(e: Entry?, h: Highlight?) {
                                     val pieEntry = e as? PieEntry
@@ -106,21 +105,29 @@ fun AnalyticsScreen(
                     update = { pieChart ->
                         pieChart.data = pieData
                         pieChart.invalidate()
+                        pieChart.setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
+                            override fun onValueSelected(e: Entry?, h: Highlight?) {
+                                val pieEntry = e as? PieEntry
+                                selectedLabel.value = pieEntry?.label
+                            }
+
+                            override fun onNothingSelected() {
+                                selectedLabel.value = null
+                            }
+                        })
                     }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Custom Legend for Main Pie Chart
             item {
                 CustomLegend(
                     entries = categoryData.keys.toList(),
-                    colors = ColorTemplate.COLORFUL_COLORS.toList(),
+                    colors = categoryColors,
                     selectedLabel = selectedLabel.value
                 )
             }
 
-            // Top Categories with Detailed Graphs
             items(topCategories) { (category) ->
                 val productsInCategory = topCategoryProducts[category] ?: emptyMap()
                 DetailedCategoryGraph(
@@ -131,7 +138,6 @@ fun AnalyticsScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Random Product of the Month
             item {
                 Box(
                     modifier = Modifier.fillMaxWidth(),
@@ -140,19 +146,17 @@ fun AnalyticsScreen(
                     Text(
                         text = "Random Product: $randomProduct",
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = MaterialTheme.typography.titleLarge.fontSize),
-                        color = Color.Black,
-                        modifier = Modifier.padding(vertical = 16.dp) // Adjusted padding for balance
+                            fontSize = MaterialTheme.typography.titleLarge.fontSize
+                        ),
+                        color = Color.Black
                     )
                 }
             }
         }
-
-        // Bottom Navigation Bar
         Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .align(Alignment.BottomCenter)
         ) {
             BottomNavigationBar(currentScreen = "Analytics")
         }
@@ -186,11 +190,11 @@ fun DetailedCategoryGraph(
         return
     }
 
-    val aggregatedProducts = products.mapValues { it.value.toFloat() }
-    val pieEntries = aggregatedProducts.map { PieEntry(it.value, it.key) }
+    val productColors = remember { generateDistinctColors(products.size) }
+    val pieEntries = products.map { PieEntry(it.value.toFloat(), it.key) }
     val pieDataSet = PieDataSet(pieEntries, "Products in $category").apply {
-        colors = ColorTemplate.COLORFUL_COLORS.toList()
-        valueTextSize = 16f // Larger numbers inside the graph
+        colors = productColors
+        valueTextSize = 16f
     }
     val pieData = PieData(pieDataSet)
 
@@ -216,7 +220,7 @@ fun DetailedCategoryGraph(
                     description.isEnabled = false
                     setUsePercentValues(true)
                     setDrawEntryLabels(false)
-                    legend.isEnabled = false // Disable default legend
+                    legend.isEnabled = false
 
                     setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
                         override fun onValueSelected(e: Entry?, h: Highlight?) {
@@ -231,15 +235,16 @@ fun DetailedCategoryGraph(
                 }
             },
             update = { pieChart ->
-                pieChart.data = pieData
+                if (pieChart.data != pieData) {
+                    pieChart.data = pieData
+                }
                 pieChart.invalidate()
             }
         )
 
-        // Custom Legend for Detailed Graph
         CustomLegend(
             entries = products.keys.toList(),
-            colors = ColorTemplate.COLORFUL_COLORS.toList(),
+            colors = productColors,
             selectedLabel = selectedLabel.value
         )
     }
@@ -273,5 +278,110 @@ fun CustomLegend(entries: List<String>, colors: List<Int>, selectedLabel: String
                 )
             }
         }
+    }
+}
+
+fun generateDistinctColors(count: Int): List<Int> {
+    val colorPool = listOf(
+        AndroidColor.rgb(115, 92, 176),
+        AndroidColor.rgb(0, 164, 239),
+        AndroidColor.rgb(106, 180, 62),
+        AndroidColor.rgb(232, 157, 65),
+        AndroidColor.rgb(253, 64, 132),
+        AndroidColor.rgb(255, 99, 71),
+        AndroidColor.rgb(0, 191, 255),
+        AndroidColor.rgb(34, 139, 34),
+        AndroidColor.rgb(255, 215, 0),
+        AndroidColor.rgb(238, 130, 238),
+        AndroidColor.rgb(220, 20, 60),
+        AndroidColor.rgb(0, 128, 128),
+        AndroidColor.rgb(210, 105, 30),
+        AndroidColor.rgb(123, 104, 238),
+        AndroidColor.rgb(72, 61, 139),
+        AndroidColor.rgb(255, 20, 147),
+        AndroidColor.rgb(127, 255, 0),
+        AndroidColor.rgb(255, 165, 0),
+        AndroidColor.rgb(139, 69, 19),
+        AndroidColor.rgb(144, 238, 144),
+        AndroidColor.rgb(240, 128, 128),
+        AndroidColor.rgb(70, 130, 180),
+        AndroidColor.rgb(152, 251, 152),
+        AndroidColor.rgb(244, 164, 96),
+        AndroidColor.rgb(250, 128, 114),
+        AndroidColor.rgb(245, 222, 179),
+        AndroidColor.rgb(64, 224, 208),
+        AndroidColor.rgb(95, 158, 160),
+        AndroidColor.rgb(32, 178, 170),
+        AndroidColor.rgb(0, 206, 209),
+        AndroidColor.rgb(72, 209, 204),
+        AndroidColor.rgb(175, 238, 238),
+        AndroidColor.rgb(127, 255, 212),
+        AndroidColor.rgb(0, 255, 127),
+        AndroidColor.rgb(124, 252, 0),
+        AndroidColor.rgb(173, 255, 47),
+        AndroidColor.rgb(250, 250, 210),
+        AndroidColor.rgb(255, 239, 213),
+        AndroidColor.rgb(255, 228, 181),
+        AndroidColor.rgb(255, 218, 185),
+        AndroidColor.rgb(255, 182, 193),
+        AndroidColor.rgb(255, 105, 180),
+        AndroidColor.rgb(255, 20, 147),
+        AndroidColor.rgb(255, 160, 122),
+        AndroidColor.rgb(255, 99, 71),
+        AndroidColor.rgb(233, 150, 122),
+        AndroidColor.rgb(250, 128, 114),
+        AndroidColor.rgb(255, 69, 0),
+        AndroidColor.rgb(255, 140, 0),
+        AndroidColor.rgb(255, 165, 0),
+        AndroidColor.rgb(255, 215, 0),
+        AndroidColor.rgb(240, 230, 140),
+        AndroidColor.rgb(189, 183, 107),
+        AndroidColor.rgb(218, 165, 32),
+        AndroidColor.rgb(184, 134, 11),
+        AndroidColor.rgb(205, 133, 63),
+        AndroidColor.rgb(139, 69, 19),
+        AndroidColor.rgb(160, 82, 45),
+        AndroidColor.rgb(210, 105, 30),
+        AndroidColor.rgb(244, 164, 96),
+        AndroidColor.rgb(222, 184, 135),
+        AndroidColor.rgb(210, 180, 140),
+        AndroidColor.rgb(188, 143, 143),
+        AndroidColor.rgb(244, 164, 96),
+        AndroidColor.rgb(205, 92, 92),
+        AndroidColor.rgb(178, 34, 34),
+        AndroidColor.rgb(139, 0, 0),
+        AndroidColor.rgb(255, 248, 220),
+        AndroidColor.rgb(255, 235, 205),
+        AndroidColor.rgb(255, 222, 173),
+        AndroidColor.rgb(245, 245, 220),
+        AndroidColor.rgb(255, 228, 196),
+        AndroidColor.rgb(255, 240, 245),
+        AndroidColor.rgb(240, 255, 255),
+        AndroidColor.rgb(240, 248, 255),
+        AndroidColor.rgb(230, 230, 250),
+        AndroidColor.rgb(176, 224, 230),
+        AndroidColor.rgb(173, 216, 230),
+        AndroidColor.rgb(135, 206, 250),
+        AndroidColor.rgb(0, 191, 255),
+        AndroidColor.rgb(135, 206, 235),
+        AndroidColor.rgb(72, 61, 139),
+        AndroidColor.rgb(123, 104, 238),
+        AndroidColor.rgb(106, 90, 205),
+        AndroidColor.rgb(147, 112, 219),
+        AndroidColor.rgb(138, 43, 226),
+        AndroidColor.rgb(148, 0, 211),
+        AndroidColor.rgb(139, 0, 139),
+        AndroidColor.rgb(153, 50, 204),
+        AndroidColor.rgb(186, 85, 211),
+        AndroidColor.rgb(255, 0, 255),
+        AndroidColor.rgb(218, 112, 214),
+        AndroidColor.rgb(255, 192, 203),
+        AndroidColor.rgb(221, 160, 221)
+    ).shuffled()
+
+    return if (count <= colorPool.size) {
+        colorPool.take(count)
+    } else {
+        throw IllegalArgumentException("Requested count exceeds the number of available colors.")
     }
 }

@@ -26,7 +26,7 @@ fun FavoritesView(
     shoppingLists: List<String>,
     onAddFavorite: (Product) -> Unit,
     onRemoveFavorite: (Product) -> Unit,
-    onAddToShoppingList: (Product, String, Int) -> Unit // Ensure this parameter is defined and used
+    onAddToShoppingList: (Product, String, Int) -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
@@ -51,7 +51,6 @@ fun FavoritesView(
                 .padding(bottom = 56.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Search Text Field
             Text(
                 text = "Search for Products",
                 style = MaterialTheme.typography.headlineMedium,
@@ -69,7 +68,6 @@ fun FavoritesView(
                 textStyle = TextStyle(color = Color.Black)
             )
 
-            // Search Results List
             if (searchResults.isNotEmpty()) {
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
                     items(searchResults) { product ->
@@ -88,7 +86,6 @@ fun FavoritesView(
                 )
             }
 
-            // Favorites List
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Your Favorites",
@@ -108,7 +105,7 @@ fun FavoritesView(
                         FavoriteItem(
                             product = product,
                             onRemoveFavorite = onRemoveFavorite,
-                            onAddToShoppingList = { // Show dialog for shopping list addition
+                            onAddToShoppingList = {
                                 selectedProduct = product
                                 showAddDialog = true
                             }
@@ -118,7 +115,6 @@ fun FavoritesView(
             }
         }
 
-        // Add to Shopping List Dialog
         if (showAddDialog && selectedProduct != null) {
             AddToShoppingListDialog(
                 product = selectedProduct!!,
@@ -131,7 +127,6 @@ fun FavoritesView(
             )
         }
 
-        // Bottom Navigation
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -187,7 +182,7 @@ fun SearchResultItem(
 fun FavoriteItem(
     product: Product,
     onRemoveFavorite: (Product) -> Unit,
-    onAddToShoppingList: (Product) -> Unit // Add to shopping list callback
+    onAddToShoppingList: (Product) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -262,7 +257,6 @@ fun AddToShoppingListDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Quantity Input
                 OutlinedTextField(
                     value = quantity,
                     onValueChange = { if (it.all { char -> char.isDigit() }) quantity = it },

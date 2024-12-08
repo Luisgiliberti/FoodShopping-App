@@ -28,18 +28,16 @@ class FavoritesActivity : ComponentActivity() {
                     var searchText by remember { mutableStateOf("") }
                     var searchResults by remember { mutableStateOf(listOf<Product>()) }
                     var favorites by remember { mutableStateOf(listOf<Product>()) }
-                    var shoppingLists by remember { mutableStateOf(listOf<Pair<String, String>>()) } // Pair of (id, name)
+                    var shoppingLists by remember { mutableStateOf(listOf<Pair<String, String>>()) }
 
                     val ingredients = ProductList.getProducts(this)
 
-                    // Fetch shopping lists (owned and shared)
                     LaunchedEffect(userId) {
                         fetchShoppingLists { fetchedLists ->
                             shoppingLists = fetchedLists
                         }
                     }
 
-                    // Fetch favorites
                     LaunchedEffect(userId) {
                         fetchFavorites { fetchedFavorites ->
                             favorites = fetchedFavorites
@@ -61,7 +59,7 @@ class FavoritesActivity : ComponentActivity() {
                         },
                         searchResults = searchResults,
                         favorites = favorites,
-                        shoppingLists = shoppingLists.map { it.second }, // Pass only names to the UI
+                        shoppingLists = shoppingLists.map { it.second },
                         onAddFavorite = { product ->
                             addFavorite(product) {
                                 favorites = favorites + product
@@ -75,7 +73,6 @@ class FavoritesActivity : ComponentActivity() {
                             }
                         },
                         onAddToShoppingList = { product, listName, quantity ->
-                            // Find the corresponding list ID
                             val listId = shoppingLists.firstOrNull { it.second == listName }?.first
                             if (listId != null) {
                                 addProductToShoppingList(product, quantity, listId, {}, { e ->
@@ -114,7 +111,7 @@ class FavoritesActivity : ComponentActivity() {
                 }.mapNotNull { doc ->
                     val id = doc.id
                     val name = doc.getString("name") ?: return@mapNotNull null
-                    Pair(id, name) // Return document ID and name
+                    Pair(id, name)
                 }
                 onComplete(fetchedLists)
             }

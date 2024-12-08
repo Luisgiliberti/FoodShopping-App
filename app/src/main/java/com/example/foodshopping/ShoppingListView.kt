@@ -19,9 +19,9 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun ShoppingListView(
-    shoppingLists: List<ShoppingList>, // Combined list of owned and shared shopping lists
+    shoppingLists: List<ShoppingList>,
     friendsList: List<String>,
-    friendsShopping: List<String>, // Friends currently shopping
+    friendsShopping: List<String>,
     isShopping: Boolean,
     onShoppingStatusChange: (Boolean) -> Unit,
     onAddShoppingList: (String, List<String>) -> Unit,
@@ -52,7 +52,6 @@ fun ShoppingListView(
                 .fillMaxSize()
                 .padding(bottom = 56.dp)
         ) {
-            // Top Bar with Switch and Add Button
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -93,7 +92,6 @@ fun ShoppingListView(
                 }
             }
 
-            // Combined List of Shopping Lists
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -145,7 +143,6 @@ fun ShoppingListView(
                 )
             }
 
-            // Friends Shopping Right Now Section
             if (friendsShopping.isNotEmpty()) {
                 Column(
                     modifier = Modifier

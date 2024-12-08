@@ -75,12 +75,12 @@ class AccountActivity : ComponentActivity() {
     private fun navigateToUserListManagement() {
         val intent = Intent(this, FriendsManagementActivity::class.java)
         startActivity(intent)
-        overridePendingTransition(0, 0) // Disable transition
+        overridePendingTransition(0, 0)
     }
 
     private fun navigateToSettings() {
         val intent = Intent(this, SettingsActivity::class.java)
         startActivity(intent)
-        overridePendingTransition(0, 0) // Disable transition
+        overridePendingTransition(0, 0)
     }
 }

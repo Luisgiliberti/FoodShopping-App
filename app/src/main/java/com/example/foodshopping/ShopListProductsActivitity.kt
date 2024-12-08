@@ -33,10 +33,8 @@ class ShopListProductsActivity : ComponentActivity() {
                 val shoppingListId =
                     intent.getStringExtra("SHOPPING_LIST_ID") ?: return@FoodShoppingTheme
 
-                // Add Firestore listener for shopping list changes
                 listenToShoppingListChanges(db, shoppingListId)
 
-                // Monitor changes to the shopping list
                 LaunchedEffect(shoppingListId) {
                     fetchShoppingList(db, shoppingListId) { updatedList ->
                         shoppingList = updatedList
@@ -250,8 +248,8 @@ class ShopListProductsActivity : ComponentActivity() {
     private fun listenToShoppingListChanges(db: FirebaseFirestore, shoppingListId: String) {
         val shoppingListRef = db.collection("ShoppingList").document(shoppingListId)
 
-        var previousData: Map<String, Any>? = null // Variable to store the previous snapshot data.
-        var isInitialFetch = true // Flag to track the first data load.
+        var previousData: Map<String, Any>? = null
+        var isInitialFetch = true
 
         shoppingListRef.addSnapshotListener { snapshot, error ->
             if (error != null) {
@@ -261,10 +259,9 @@ class ShopListProductsActivity : ComponentActivity() {
             }
 
             if (snapshot != null && snapshot.exists()) {
-                val afterData = snapshot.data // Current data snapshot
+                val afterData = snapshot.data
 
                 if (isInitialFetch) {
-                    // Ignore the initial data fetch
                     previousData = afterData
                     isInitialFetch = false
                     Timber.tag("ShoppingListChanges").d("Initial data fetch ignored.")
@@ -273,7 +270,7 @@ class ShopListProductsActivity : ComponentActivity() {
 
                 if (afterData != null) {
                     handleShoppingListChanges(previousData, afterData)
-                    previousData = afterData // Update previous data for the next change.
+                    previousData = afterData
                 }
             }
         }
@@ -291,82 +288,94 @@ class ShopListProductsActivity : ComponentActivity() {
 
         val db = FirebaseFirestore.getInstance()
 
-        // Fetch user notification settings
-        db.collection("User").document(currentUser).get()
-            .addOnSuccessListener { document ->
-                val itemUpdatesEnabled =
-                    document.getBoolean("notification_settings.item_updates") ?: false
+        val userIds = afterProductList.mapNotNull { it["addedBy"] as? String }.toSet()
 
-                // If item updates are disabled, skip sending these types of notifications
-                if (!itemUpdatesEnabled) {
+        if (userIds.isNotEmpty()) {
+            db.collection("User").whereIn(FieldPath.documentId(), userIds.toList()).get()
+                .addOnSuccessListener { userSnapshots ->
+                    val userMap = userSnapshots.documents.associate {
+                        it.id to (it.getString("username") ?: "Unknown")
+                    }
+
+                    db.collection("User").document(currentUser).get()
+                        .addOnSuccessListener { document ->
+                            val itemUpdatesEnabled =
+                                document.getBoolean("notification_settings.item_updates") ?: false
+
+                            if (!itemUpdatesEnabled) {
+                                Timber.tag("ShoppingListChanges")
+                                    .d("Item updates notifications are disabled. Changes are logged but no notifications sent.")
+                                return@addOnSuccessListener
+                            }
+
+                            val addedProducts = afterProductList.filter { product ->
+                                beforeProductList.none { it["name"] == product["name"] }
+                            }
+
+                            val removedProducts = beforeProductList.filter { product ->
+                                afterProductList.none { it["name"] == product["name"] }
+                            }
+
+                            val markedAsBoughtProducts = afterProductList.filter { product ->
+                                product["checked"] == true &&
+                                        beforeProductList.any { it["name"] == product["name"] && it["checked"] != true }
+                            }
+
+                            val unmarkedAsBoughtProducts = afterProductList.filter { product ->
+                                product["checked"] != true &&
+                                        beforeProductList.any { it["name"] == product["name"] && it["checked"] == true }
+                            }
+
+                            addedProducts.forEach { product ->
+                                val addedBy = product["addedBy"] as? String
+                                val username = userMap[addedBy] ?: "Unknown"
+                                sendNotificationToOthers(
+                                    "A new product has been added to the shopping list by $username!",
+                                    sharedWith,
+                                    currentUser
+                                )
+                            }
+
+                            removedProducts.forEach { product ->
+                                val addedBy = product["addedBy"] as? String
+                                val username = userMap[addedBy] ?: "Unknown"
+                                sendNotificationToOthers(
+                                    "A product has been removed from the shopping list by $username!",
+                                    sharedWith,
+                                    currentUser
+                                )
+                            }
+
+                            markedAsBoughtProducts.forEach { product ->
+                                val addedBy = product["addedBy"] as? String
+                                val username = userMap[addedBy] ?: "Unknown"
+                                sendNotificationToOthers(
+                                    "A product has been marked as bought in the shopping list by $username!",
+                                    sharedWith,
+                                    currentUser
+                                )
+                            }
+
+                            unmarkedAsBoughtProducts.forEach { product ->
+                                val addedBy = product["addedBy"] as? String
+                                val username = userMap[addedBy] ?: "Unknown"
+                                sendNotificationToOthers(
+                                    "A product has been unmarked as bought in the shopping list by $username!",
+                                    sharedWith,
+                                    currentUser
+                                )
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Timber.tag("ShoppingListChanges")
+                                .e(e, "Failed to fetch user notification settings.")
+                        }
+                }
+                .addOnFailureListener { e ->
                     Timber.tag("ShoppingListChanges")
-                        .d("Item updates notifications are disabled. Changes are logged but no notifications sent.")
-                    return@addOnSuccessListener
+                        .e(e, "Failed to fetch usernames for addedBy IDs.")
                 }
-
-                // Detect added products
-                val addedProducts = afterProductList.filter { product ->
-                    beforeProductList.none { it["name"] == product["name"] }
-                }
-
-                // Detect removed products
-                val removedProducts = beforeProductList.filter { product ->
-                    afterProductList.none { it["name"] == product["name"] }
-                }
-
-                // Detect products marked as bought
-                val markedAsBoughtProducts = afterProductList.filter { product ->
-                    product["checked"] == true &&
-                            beforeProductList.any { it["name"] == product["name"] && it["checked"] != true }
-                }
-
-                // Detect products unmarked as bought
-                val unmarkedAsBoughtProducts = afterProductList.filter { product ->
-                    product["checked"] != true &&
-                            beforeProductList.any { it["name"] == product["name"] && it["checked"] == true }
-                }
-
-                // Send notifications for each change type
-                addedProducts.forEach { product ->
-                    val addedBy = product["addedBy"] as? String ?: "Unknown"
-                    sendNotificationToOthers(
-                        "A new product has been added to the shopping list by $addedBy!",
-                        sharedWith,
-                        currentUser
-                    )
-                }
-
-                removedProducts.forEach { product ->
-                    val addedBy = product["addedBy"] as? String ?: "Unknown"
-                    sendNotificationToOthers(
-                        "A product has been removed from the shopping list by $addedBy!",
-                        sharedWith,
-                        currentUser
-                    )
-                }
-
-                markedAsBoughtProducts.forEach { product ->
-                    val addedBy = product["addedBy"] as? String ?: "Unknown"
-                    sendNotificationToOthers(
-                        "A product has been marked as bought in the shopping list by $addedBy!",
-                        sharedWith,
-                        currentUser
-                    )
-                }
-
-                unmarkedAsBoughtProducts.forEach { product ->
-                    val addedBy = product["addedBy"] as? String ?: "Unknown"
-                    sendNotificationToOthers(
-                        "A product has been unmarked as bought in the shopping list by $addedBy!",
-                        sharedWith,
-                        currentUser
-                    )
-                }
-            }
-            .addOnFailureListener { e ->
-                Timber.tag("ShoppingListChanges")
-                    .e(e, "Failed to fetch user notification settings.")
-            }
+        }
     }
 
     private fun sendNotificationToOthers(
@@ -374,7 +383,6 @@ class ShopListProductsActivity : ComponentActivity() {
         sharedWith: List<String>,
         currentUserId: String
     ) {
-        // Exclude the current user
         val otherUsers = sharedWith.filter { it != currentUserId }
 
         if (otherUsers.isEmpty()) {
@@ -382,7 +390,6 @@ class ShopListProductsActivity : ComponentActivity() {
             return
         }
 
-        // Check for notification settings
         val db = FirebaseFirestore.getInstance()
         val auth = FirebaseAuth.getInstance()
 
@@ -392,14 +399,12 @@ class ShopListProductsActivity : ComponentActivity() {
                     val itemUpdatesEnabled =
                         document.getBoolean("notification_settings.item_updates") ?: false
 
-                    // If item_updates is disabled, do not send notifications
                     if (!itemUpdatesEnabled) {
                         Timber.tag("ShoppingListNotification")
                             .d("Notifications disabled by user settings.")
                         return@addOnSuccessListener
                     }
 
-                    // Otherwise, send the notification
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                         if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                             Timber.tag("ShoppingListNotification")

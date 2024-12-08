@@ -1,4 +1,0 @@
-TO DO:
-2) In settings - Allow the user to turn on or off notifications
-   - Add/Removed/Bought Products and Users Shopping Status-
-3) Improve the Analytics
